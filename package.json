@@ -1,0 +1,16 @@
+{
+  "name": "node-red-umbparser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "umbparser_node.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "ISC",
+  "node-red" : {
+    "nodes": {
+        "lower-case": "umbparser_node.js"
+    }
+  }
+}
