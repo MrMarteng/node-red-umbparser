@@ -10,7 +10,12 @@ describe('Class', function() {
     describe('#status frame', function(){
         it('UMB status requires with error status OK has been parsed correctly', function() {
             umbstatus = umbparser.ParseReadBuf(statusOkResponse);
-            assert.equal(umbstatus.umbframe.status, 0);
+            assert.equal(umbstatus.umbframe.status, 0x00);
+            assert.equal(umbstatus.parserState, "finished");
+        })
+        it('UMB status requires with error status E55 has been parsed correctly', function() {
+            umbstatus = umbparser.ParseReadBuf(status55Response);
+            assert.equal(umbstatus.umbframe.status, 0x55);
             assert.equal(umbstatus.parserState, "finished");
         })
     })
