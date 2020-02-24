@@ -18,16 +18,16 @@ module.exports = function(RED) {
                 {
                     this.log("Frametype: " + parsedFrame.umbframe.type);
                     this.log("Framestatus: " + parsedFrame.umbframe.status);
+                    let retmsg = new Object;
+                    retmsg.payload = parsedFrame;
+                    this.send(retmsg);
                 }
-               
             }
             else
             {
-                log("Oh nooo");
+                error("invalid paramter");
             }
 
-            //msg.payload = msg.payload.toLowerCase();
-            this.send(msg);
         });
     }
     RED.nodes.registerType("umbparser", UMBParserNode);
