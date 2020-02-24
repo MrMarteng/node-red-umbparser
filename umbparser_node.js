@@ -18,9 +18,14 @@ module.exports = function(RED) {
                 {
                     this.log("Frametype: " + parsedFrame.umbframe.type);
                     this.log("Framestatus: " + parsedFrame.umbframe.status);
+                    this.log("Framecmd: " + parsedFrame.umbframe.cmd);
                     let retmsg = new Object;
                     retmsg.payload = parsedFrame;
                     this.send(retmsg);
+                }
+                else if(parsedFrame.parserState == "processing")
+                {
+                    this.log("processing...");
                 }
             }
             else

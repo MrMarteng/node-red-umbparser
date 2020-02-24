@@ -388,6 +388,7 @@ class UMBParser {
         {
             parsedFrame.FromAddr = (this.readBuffer[UMBFRAME_FROM_ADDR_IDX+1] << 8) | this.readBuffer[UMBFRAME_FROM_ADDR_IDX];
             parsedFrame.ToAddr = (this.readBuffer[UMBFRAME_TO_ADDR_IDX+1] << 8) | this.readBuffer[UMBFRAME_TO_ADDR_IDX];
+            parsedFrame.cmd = this.readBuffer[UMBFRAME_CMD_IDX];
             parsedFrame.payload = this.payload;
             parsedFrame.crc = this.calcCRC(this.readBuffer.slice(0, this.parsingETXIdx));
             if(((parsedFrame.FromAddr & 0xF000) == 0xF000) && ((parsedFrame.ToAddr & 0xF000) != 0xF000))
