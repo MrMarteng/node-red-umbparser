@@ -1,3 +1,4 @@
+const CRC = require('crc-full').CRC;
 
 //! @name  UMB frame character position (index)
 //! UMB frame layout
@@ -139,6 +140,7 @@ const PAR_STATE =
     PARSER_IDLE : 'idle',
     PARSER_PROCESSING : 'prcoessing',
     PARSER_ERROR : 'error',
+    PARSER_CRCERROR : 'crc_error',
     PARSER_FINISHED : 'finished',
 }
 //!@}
@@ -161,67 +163,37 @@ class UMBFrame {
 }
 
 
-
 class UMBParser {
-    
-    // This "enum" can be used to indicate what kind of CRC8 checksum you will be calculating
-    CRC8POLY = {
-        CRC8 : 0xd5,
-        CRC8_CCITT : 0x07,
-        CRC8_DALLAS_MAXIM : 0x31,
-        CRC8_SAE_J1850 : 0x1D,
-        CRC_8_WCDMA : 0x9b,
-    }
 
     constructor() {
         this.readBuffer = [];
         this.parsingIdx = 0;
         this.parsingSOHIdx = 0;
         this.parsingETXIdx = 0;
+        this.parsingCRC = 0;
         this.payloadCnt = 0;
         this.frameState = FRAME_STATE.PAR_SOH;
         this.parserState = PAR_STATE.PARSER_PROCESSING;
         this.payload = [];
-        this.CRCtable = this.generateCRCTable(this.CRC8POLY.CRC8_CCITT);
+        this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
     }
 
     // Returns the 8-bit checksum given an array of byte-sized numbers
     calcCRC(byte_array) 
     {
-        var c = 0
-
-        for (var i = 0; i < byte_array.length; i++ )
-        { 
-            c = this.CRCtable[(c ^ byte_array[i]) % 256] 
-        }
-
-        return c;
+        return this.CRC.compute(byte_array);
     } 
 
-    // returns a lookup table byte array given one of the values from CRC8.POLY 
-    generateCRCTable(polynomial)
+    resetParser() 
     {
-        var csTable = [] // 256 max len byte array
-
-        for ( var i = 0; i < 256; ++i ) 
-        {
-            var curr = i
-            for ( var j = 0; j < 8; ++j ) 
-            {
-                if ((curr & 0x80) !== 0) 
-                {
-                    curr = ((curr << 1) ^ polynomial) % 256
-                } else 
-                {
-                    curr = (curr << 1) % 256
-                }
-            }
-            csTable[i] = curr 
-        }
-            
-        return csTable
+        this.readBuffer.slice(this.parsingSOHIdx);
+        this.parsingSOHIdx = 0;
+        this.parsingIdx = 0;
+        this.payloadCnt = 0;
+        this.parsingETXIdx = 0;
+        this.frameState = FRAME_STATE.PAR_SOH;
     }
-    
+
     ParseReadBuf(curBuffer)
     {
         // return immediately if readLen == 0, handleTransfer now calls the parser also when no characters received (Modbus RTU)
@@ -339,9 +311,21 @@ class UMBParser {
     
             case FRAME_STATE.PAR_CRC_LSB:
                 this.frameState = FRAME_STATE.PAR_CRC_MSB;
+                this.parsingCRC = this.readBuffer[this.parsingIdx];
                 break;
             case FRAME_STATE.PAR_CRC_MSB:
-                this.frameState = FRAME_STATE.PAR_EOT;
+                this.parsingCRC |= (this.readBuffer[this.parsingIdx] << 8);
+
+                let crc = this.calcCRC(this.readBuffer.slice(0, this.parsingETXIdx+1));
+
+                if(crc == this.parsingCRC)
+                {
+                    this.frameState = FRAME_STATE.PAR_EOT;
+                }
+                else
+                {
+                    this.parserState = PAR_STATE.PARSER_CRCERROR;
+                }
                 break;
             case FRAME_STATE.PAR_EOT:
                 if(this.readBuffer[this.parsingIdx] == UMBFRAME_EOT_VAL)
@@ -373,12 +357,7 @@ class UMBParser {
             if(this.parserState == PAR_STATE.PARSER_ERROR)
             {
                 /* start parsing at last SOH */
-                this.readBuffer.slice(this.parsingSOHIdx);
-                this.parsingSOHIdx = 0;
-                this.parsingIdx = 0;
-                this.payloadCnt = 0;
-                this.parsingETXIdx = 0;
-                this.frameState = FRAME_STATE.PAR_SOH;
+                this.resetParser();
                 break;
             }
         }
@@ -404,6 +383,8 @@ class UMBParser {
             {
                 parsedFrame.type = FRAME_TYPE.UNKOWN;
             }
+
+            this.resetParser();
         }
         
         let retval = {

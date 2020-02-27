@@ -8,9 +8,12 @@
   },
   "author": "",
   "license": "ISC",
-  "node-red" : {
+  "node-red": {
     "nodes": {
-        "lower-case": "umbparser_node.js"
+      "lower-case": "umbparser_node.js"
     }
+  },
+  "dependencies": {
+    "crc-full": "^1.1.0"
   }
 }
