@@ -1,37 +1,5 @@
 const CRC = require('crc-full').CRC;
-
-//! @name  UMB frame character position (index)
-//! UMB frame layout
-//!
-//!  0  |   1     |  2-3   | 4-5      | 6       | 7   |   8     |   9      | 10 - (7+len) | 8+len | (9+len) - (10+len) | 11+len
-//! --- | ------- | ------ | -------- | ------- | --- | ------- | -------- | ------------ | ----- | ------------------ | ------
-//! SOH | \<ver\> | \<to\> | \<from\> | \<len\> | STX | \<cmd\> | \<verc\> | \<payload\>  | ETX   | \<cs\>             | EOT
-//!
-//@{
-const UMBFRAME_SOH_IDX              =  0;    //!< Index of SOH in UMB frame buf
-const UMBFRAME_VER_IDX              =  1;    //!< Frame index of frame version identifier
-const UMBFRAME_SOH_VAL              =  0x01; //!< Start of Header
-const UMBFRAME_FROM_ADDR_IDX        =  4;    //!< Frame index of destination address
-const UMBFRAME_TO_ADDR_IDX          =  2;    //!< Frame index of destination address
-const UMBFRAME_STX_IDX              =  7;    //!< Frame index for StartOfTXData identifier
-const UMBFRAME_LEN_IDX              =  6;    //!< Frame length field frame index
-const UMBFRAME_STX_VAL              =  0x02; //!< StartOfTXData identifier value
-const UMBFRAME_CMD_IDX              =  8;    //!< Command field frame index
-const UMBFRAME_CMDV_IDX             =  9;    //!< Command version field frame index
-const UMBFRAME_SUBCMD_IDX           =  10;   //!< SubCommand field frame index
-const UMBFRAME_ETX_VAL              =  0x03; //!< End of TXData
-const UMBFRAME_EOT_VAL              =  0x04; //!< End of transmission
-const UMBRESPONSE_STATUS_IDX        =  10;   //!< The first byte of payload data defines the status of a response
-const UMBRESPONSE_SUBCMD_IDX        =  11;   //!< SubCommand field frame index
-const UMBREQUEST_SUBCMD_IDX         =  10;   //!< SubCommand field frame index
-//@}
-
-const UMBFRAME_VERSION_V10          = 0x10;
-const UMBFRAME_MAX_FRAMELENGTH      = 255;
-const UMBFRAME_FRAME_LENGTH_OVERHEAD = 12;
-const UMBFRAME_MAX_PAYLOAD_LENGTH   = (UMBFRAME_MAX_FRAMELENGTH - UMBFRAME_FRAME_LENGTH_OVERHEAD - 2 - 2);
-const UMBFRAME_MAX_LENGTH           = (UMBFRAME_MAX_FRAMELENGTH - UMBFRAME_FRAME_LENGTH_OVERHEAD - 2);
-
+const umb_consts = require('./umb_consts').umb_consts;
 
 const UMB_CMD = {
     UMB_CMD_GET_HWSW_VERSION : 0x20,
@@ -203,7 +171,6 @@ class UMBParser {
         }
 
         // Push curent data
-        //this.readBuffer.concat(curBuffer);
         this.readBuffer = curBuffer;
 
         this.parsingIdx = 0;
@@ -212,7 +179,7 @@ class UMBParser {
             switch(this.frameState)
             {
             case FRAME_STATE.PAR_SOH:
-                if(this.readBuffer[this.parsingIdx] == UMBFRAME_SOH_VAL)
+                if(this.readBuffer[this.parsingIdx] == umb_consts.UMBFRAME_VAL.SOH)
                 {
                     this.parserState = PAR_STATE.PARSER_PROCESSING;
                     this.frameState = FRAME_STATE.PAR_VER;
@@ -226,7 +193,7 @@ class UMBParser {
     
             case FRAME_STATE.PAR_VER:
                 //@note: This parser currently only supports UMB-V1.0
-                if(this.readBuffer[this.parsingIdx] == UMBFRAME_VERSION_V10)
+                if(this.readBuffer[this.parsingIdx] == umb_consts.UMBFRAME_VERSION_V10)
                 {
                     this.frameState = FRAME_STATE.PAR_LO_LSB;
                 }
@@ -251,7 +218,7 @@ class UMBParser {
     
             case FRAME_STATE.PAR_LEN:
                 this.frameLength = this.readBuffer[this.parsingIdx];
-                if(this.frameLength < UMBFRAME_MAX_LENGTH)
+                if(this.frameLength < umb_consts.UMBFRAME_MAX_LENGTH)
                 {
                     this.payloadCnt = 0;
                     this.frameState = FRAME_STATE.PAR_STX;
@@ -263,7 +230,7 @@ class UMBParser {
                 break;
     
             case FRAME_STATE.PAR_STX:
-                if(this.readBuffer[this.parsingIdx] == UMBFRAME_STX_VAL)
+                if(this.readBuffer[this.parsingIdx] == umb_consts.UMBFRAME_VAL.STX)
                 {
                     this.frameState = FRAME_STATE.PAR_CMD;
                 }
@@ -298,7 +265,7 @@ class UMBParser {
                 /* no break */
     
             case FRAME_STATE.PAR_ETX:
-                if(this.readBuffer[this.parsingIdx] == UMBFRAME_ETX_VAL)
+                if(this.readBuffer[this.parsingIdx] == umb_consts.UMBFRAME_VAL.ETX)
                 {
                     this.parsingETXIdx = this.parsingIdx;
                     this.frameState = FRAME_STATE.PAR_CRC_LSB;
@@ -328,7 +295,7 @@ class UMBParser {
                 }
                 break;
             case FRAME_STATE.PAR_EOT:
-                if(this.readBuffer[this.parsingIdx] == UMBFRAME_EOT_VAL)
+                if(this.readBuffer[this.parsingIdx] == umb_consts.UMBFRAME_VAL.EOT)
                 {
                     /**
                      * At this state it looks like have a valid UMB Frame
@@ -365,9 +332,9 @@ class UMBParser {
         let parsedFrame = new UMBFrame();
         if(this.parserState == PAR_STATE.PARSER_FINISHED)
         {
-            parsedFrame.FromAddr = (this.readBuffer[UMBFRAME_FROM_ADDR_IDX+1] << 8) | this.readBuffer[UMBFRAME_FROM_ADDR_IDX];
-            parsedFrame.ToAddr = (this.readBuffer[UMBFRAME_TO_ADDR_IDX+1] << 8) | this.readBuffer[UMBFRAME_TO_ADDR_IDX];
-            parsedFrame.cmd = this.readBuffer[UMBFRAME_CMD_IDX];
+            parsedFrame.FromAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR];
+            parsedFrame.ToAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR];
+            parsedFrame.cmd = this.readBuffer[umb_consts.UMBFRAME_IDX.CMD];
             parsedFrame.payload = this.payload;
             parsedFrame.crc = this.calcCRC(this.readBuffer.slice(0, this.parsingETXIdx));
             if(((parsedFrame.FromAddr & 0xF000) == 0xF000) && ((parsedFrame.ToAddr & 0xF000) != 0xF000))
