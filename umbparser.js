@@ -36,19 +36,31 @@ const FRAME_TYPE =
 {
     REQUEST: 'request',
     RESPONSE: 'response',
-    UNKOWN: 'unknown'
+    UNKNOWN: 'unknown'
 }
 
 class UMBFrame {
     constructor() {
-        this.type = 'Unknown';
+        this.type = FRAME_TYPE.UNKNOWN;
         this.payload = new Uint8Array();
         this.cmd = 0;
         this.status = -1;
         this.CRC = 0xFFFF;
+        this.parsedData;
     }
 }
 
+//! Messwert und UMB-Status eines Kanals.
+class MeasChVal
+{
+    constructor() 
+    {
+        this.ch_number = 0;      //!< Kanalnummer
+        this.ch_value = 0;       //!< aktueller Wert des Kanals
+        this.ch_data_type = 0;   //!< Datentype
+        this.ch_status = 0;      //!< UMB-Status        
+    }
+}
 
 class UMBParser {
 
@@ -61,7 +73,7 @@ class UMBParser {
         this.payloadCnt = 0;
         this.frameState = FRAME_STATE.PAR_SOH;
         this.parserState = PAR_STATE.PARSER_PROCESSING;
-        this.payload = [];
+        this.payload = new Uint8Array();
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
     }
 
@@ -78,6 +90,7 @@ class UMBParser {
         this.parsingIdx = 0;
         this.payloadCnt = 0;
         this.parsingETXIdx = 0;
+        this.payload = new Uint8Array();
         this.frameState = FRAME_STATE.PAR_SOH;
     }
 
@@ -137,9 +150,11 @@ class UMBParser {
     
             case FRAME_STATE.PAR_LEN:
                 this.frameLength = this.readBuffer[this.parsingIdx];
-                if(this.frameLength < umb_consts.UMBFRAME_MAX_LENGTH)
+                if( (this.frameLength < umb_consts.UMBFRAME_MAX_LENGTH) &&
+                    (this.frameLength > 2) )
                 {
                     this.payloadCnt = 0;
+                    this.payload = new Uint8Array(this.frameLength - 2);
                     this.frameState = FRAME_STATE.PAR_STX;
                 }
                 else
@@ -173,7 +188,7 @@ class UMBParser {
                 if(this.payloadCnt <= (this.frameLength - 2))
                 {
                     /* Payload data */
-                    this.payload[this.payloadCnt-1] = this.readBuffer[this.parsingIdx];
+                    this.payload.set([this.readBuffer[this.parsingIdx]], this.payloadCnt-1);
                     break;
                 }
                 else
@@ -248,6 +263,7 @@ class UMBParser {
             }
         }
 
+        // Finish parsing frame
         let parsedFrame = new UMBFrame();
         if(this.parserState == PAR_STATE.PARSER_FINISHED)
         {
@@ -267,7 +283,18 @@ class UMBParser {
             }
             else
             {
-                parsedFrame.type = FRAME_TYPE.UNKOWN;
+                parsedFrame.type = FRAME_TYPE.UNKNOWN;
+            }
+
+            // Analyse command
+            if((parsedFrame.type == FRAME_TYPE.RESPONSE) && (parsedFrame.status == umb_consts.ERROR_STATUS.STATUS_OK))
+            {
+                switch(parsedFrame.cmd)
+                {
+                    case umb_consts.UMB_CMD.GETMULTICHANNEL:
+                        parsedFrame.parsedData = this.cmdRespChData();
+                        break;
+                }
             }
 
             this.resetParser();
@@ -281,6 +308,68 @@ class UMBParser {
         return retval;
     }
     
+    cmdRespChData()
+    {
+        let numChannels = this.payload[1];
+        let index = 2;
+        let chData = new Array();
+
+        for(let i=0; i<numChannels; i++)
+        {
+            let curChData = new MeasChVal();
+            let curDataLen = this.payload[index];
+            let curDataView = new DataView(this.payload.buffer, index+1, curDataLen);
+            curChData.ch_status = curDataView.getUint8(0);
+            curChData.ch_number = curDataView.getUint16(1, true);
+            curChData.ch_data_type = curDataView.getUint8(3);
+
+            if(curChData.ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
+            {
+                switch(curChData.ch_data_type)
+                {
+                    case 0x10:
+                        curChData.ch_data_type = "UCHAR";
+                        curChData.ch_value = curDataView.getUint8(3);
+                        break;
+                    case 0x11:
+                        curChData.ch_data_type = "SCHAR";
+                        curChData.ch_value = curDataView.getInt8(3);
+                        break;
+                    case 0x12:
+                        curChData.ch_data_type = "USHORT";
+                        curChData.ch_value = curDataView.getUint16(3, true);
+                        break;
+                    case 0x13:
+                        curChData.ch_data_type = "SSHORT";
+                        curChData.ch_value = curDataView.getInt16(3, true);
+                        break;
+                    case 0x14:
+                        curChData.ch_data_type = "ULONG";
+                        curChData.ch_value = curDataView.getUint32(3, true);
+                        break;
+                    case 0x15:
+                        curChData.ch_data_type = "SLONG";
+                        curChData.ch_value = curDataView.getInt32(3, true);
+                        break;
+                    case 0x16:
+                        curChData.ch_data_type = "FLOAT";
+                        curChData.ch_value = curDataView.getFloat32(3, true);
+                        break;
+                    case 0x17:
+                        curChData.ch_data_type = "DOUBLE";
+                        curChData.value = curDataView.getFloat64(3, true);
+                        break;
+                }
+            }
+            
+            chData.push(curChData);
+
+            index += curDataLen+1;
+        }
+
+        return chData;
+    }
+
 }
 
 module.exports.UMBParser = UMBParser;
