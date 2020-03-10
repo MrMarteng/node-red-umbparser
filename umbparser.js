@@ -50,7 +50,7 @@ class UMBFrame {
     }
 }
 
-//! Messwert und UMB-Status eines Kanals.
+
 class MeasChVal
 {
     constructor() 
@@ -61,6 +61,7 @@ class MeasChVal
         this.ch_status = 0;      //!< UMB-Status        
     }
 }
+
 
 class UMBParser {
 
@@ -357,7 +358,7 @@ class UMBParser {
                         break;
                     case 0x17:
                         curChData.ch_data_type = "DOUBLE";
-                        curChData.value = curDataView.getFloat64(3, true);
+                        curChData.ch_value = curDataView.getFloat64(3, true);
                         break;
                 }
             }
@@ -373,3 +374,4 @@ class UMBParser {
 }
 
 module.exports.UMBParser = UMBParser;
+module.exports.MeasChVal = MeasChVal;
