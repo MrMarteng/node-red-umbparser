@@ -1,6 +1,7 @@
 let mod_umbparser = require('./umbparser');
 
 let umbparser = new mod_umbparser.UMBParser();
+let umbgen = new mod_umbparser.UMBGenerator();
 
 module.exports = function(RED) {
     function UMBParserNode(config) {
@@ -45,5 +46,19 @@ module.exports = function(RED) {
 
         });
     }
+    function UMBGenNode(config) {
+        RED.nodes.createNode(this, config);
+        var node = this;
+
+        this.address = config.address;
+        this.channels = config.channels;
+
+        node.on('input', function(msg) {
+            let retmsg = new Object;
+            retmsg.payload = [this.address, this.channels];
+            node.send(retmsg);
+        });
+    }
     RED.nodes.registerType("umbparser", UMBParserNode);
+    RED.nodes.registerType("umbgenerator", UMBGenNode);
 }

@@ -373,5 +373,10 @@ class UMBParser {
 
 }
 
+class UMBGenerator {
+
+}
+
 module.exports.UMBParser = UMBParser;
+module.exports.UMBGenerator = UMBGenerator;
 module.exports.MeasChVal = MeasChVal;
