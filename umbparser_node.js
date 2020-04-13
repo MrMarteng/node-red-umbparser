@@ -7,10 +7,19 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
         var node = this;
         node.on('input', function(msg) {
-            if( msg.payload instanceof Buffer )
+            in_data = null;
+            if(Array.isArray(msg.payload))
+            {
+                in_data = Buffer.from(msg.payload);
+            }
+            if(msg.payload instanceof Buffer)
+            {
+                in_data = msg.payload;
+            }
+            if(in_data != null)
             {
                 this.log("Valid input buffer detected");
-                let parsedFrame = umbparser.ParseReadBuf(msg.payload);
+                let parsedFrame = umbparser.ParseReadBuf(in_data);
 
                 this.log("Parsing status:")
                 this.log("parser status: " + parsedFrame.parserState);
@@ -30,7 +39,8 @@ module.exports = function(RED) {
             }
             else
             {
-                error("invalid paramter");
+                this.error("invalid paramter");
+                this.log("invalid paramter");
             }
 
         });

@@ -164,7 +164,6 @@ const UMB_SUMBCMD = {
 }
 
 
-
 module.exports.umb_consts = {
     UMBFRAME_VAL,
     UMBFRAME_IDX,
