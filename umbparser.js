@@ -375,6 +375,22 @@ class UMBParser {
 
 class UMBGenerator {
 
+    constructor(cmd, cmd_ver, to_addr, from_addr) {
+        this.readBuffer = [];       
+        this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
+
+        this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBFRAME_VAL.SOH;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.VER] = umb_consts.UMBFRAME_VERSION_V10;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.STX] = umb_consts.UMBFRAME_VAL.STX;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.LEN] = 2;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr.classId;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr.deviceId;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr.classId;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr.deviceId;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.CMD] = cmd;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.CMDV] = cmd_ver;
+    }
+
 }
 
 module.exports.UMBParser = UMBParser;
