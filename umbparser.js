@@ -39,8 +39,10 @@ const FRAME_TYPE =
     UNKNOWN: 'unknown'
 }
 
-class UMBFrame {
-    constructor() {
+class UMBFrame 
+{
+    constructor() 
+    {
         this.type = FRAME_TYPE.UNKNOWN;
         this.payload = new Uint8Array();
         this.cmd = 0;
@@ -63,9 +65,11 @@ class MeasChVal
 }
 
 
-class UMBParser {
+class UMBParser 
+{
 
-    constructor() {
+    constructor() 
+    {
         this.readBuffer = [];
         this.parsingIdx = 0;
         this.parsingSOHIdx = 0;
@@ -373,24 +377,111 @@ class UMBParser {
 
 }
 
-class UMBGenerator {
+class UMBGenerator 
+{
 
-    constructor(cmd, cmd_ver, to_addr, from_addr) {
+    constructor() 
+    {
         this.readBuffer = [];       
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
+    }
 
-        this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBFRAME_VAL.SOH;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.VER] = umb_consts.UMBFRAME_VERSION_V10;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.STX] = umb_consts.UMBFRAME_VAL.STX;
+    createReq(cmd, cmd_ver, to_addr, from_addr) 
+    {
+        this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBF
+        this.readBuffer[umb_consts.UMBFRAME_IDX.VER] = umb_consts.UMBF
+        this.readBuffer[umb_consts.UMBFRAME_IDX.STX] = umb_consts.UMBF
         this.readBuffer[umb_consts.UMBFRAME_IDX.LEN] = 2;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr.classId;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr.deviceId;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr.classId;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr.deviceId;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr & 0xFF;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = (to_addr & 0xFF00) >> 8;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr & 0xFF;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = (from_addr & 0xFF00) >>8;
         this.readBuffer[umb_consts.UMBFRAME_IDX.CMD] = cmd;
         this.readBuffer[umb_consts.UMBFRAME_IDX.CMDV] = cmd_ver;
     }
 
+    // Returns the 8-bit checksum given an array of byte-sized numbers
+    calcCRC(byte_array) 
+    {
+        return this.CRC.compute(byte_array);
+    } 
+
+    genFrameCRCEnd(payloadLength)
+    {
+        let crc = 0xFFFF;
+        let newFrameLength;
+
+        this.readBuffer[umb_consts.UMBFRAME_IDX.LEN] = payloadLength + 2;
+        newFrameLength = umb_consts.UMBFRAME_FRAME_LENGTH_OVERHEAD + this.readBuffer[umb_consts.UMBFRAME_IDX.LEN];
+
+        this.readBuffer[newFrameLength - 4] = umb_consts.UMBFRAME_VAL.ETX;
+
+        crc = this.calcCRC(this.readBuffer.slice(0, newFrameLength - 3))
+        this.readBuffer[newFrameLength - 2] = (crc >> 8) & 0xFF;
+        this.readBuffer[newFrameLength - 3] = crc & 0xFF;
+
+        this.readBuffer[newFrameLength - 1] = umb_consts.UMBFRAME_VAL.EOT;
+
+    }
+
+    getPayloadDataIndex(frame_type)
+    {
+        let uDataIdx = (umb_consts.UMBFRAME_IDX.CMDV + 1);
+    
+        switch (frame_type)
+        {
+        case FRAME_TYPE.RESPONSE:
+            //@TODO
+            //if (UmbDispatcher_HasSubCmd(UMBFrame_getCmd(pFrame), UMBFrame_getCmdVer(pFrame)))
+            if(0)
+            {
+                uDataIdx = (umb_consts.UMBFRAME_IDX.SUBCMD + 1);
+            }
+            else
+            {
+                uDataIdx = (umb_consts.UMBFRAME_IDX.RES_STATUS + 1);
+            }
+            break;
+    
+        case FRAME_TYPE.REQUEST:
+            //@TODO
+            //if (UmbDispatcher_HasSubCmd(UMBFrame_getCmd(pFrame), UMBFrame_getCmdVer(pFrame)))
+            if(0)
+            {
+                uDataIdx = (umb_consts.UMBFRAME_IDX.SUBCMD + 1);
+            }
+            else
+            {
+                uDataIdx = (umb_consts.UMBFRAME_IDX.CMDV + 1);
+            }
+            break;    
+        default:
+            uDataIdx = (umb_consts.UMBFRAME_IDX.CMDV + 1);
+            break;
+        }
+    
+        return uDataIdx;
+    }
+    
+    createMultiChReq(to_addr, channellist) 
+    {
+        //@TODO Master address?
+        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, 0xFF01);
+        let u16_chlist = new Uint16Array(channellist.length);
+
+        for(let i=0; i<channellist.length; i++) 
+        {
+        //    let curDataView = new DataView(this.readBuffer, payloadIndex+1, 2);
+            u16_chlist[i] = channellist[i];
+        }
+
+        let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
+        this.readBuffer[payloadIndex] = Uint16Array.from(u16_chlist);
+    
+        this.genFrameCRCEnd(u16_chlist.length);
+
+        return this.readBuffer;
+    }
 }
 
 module.exports.UMBParser = UMBParser;

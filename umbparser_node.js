@@ -55,7 +55,7 @@ module.exports = function(RED) {
 
         node.on('input', function(msg) {
             let retmsg = new Object;
-            retmsg.payload = [this.address, this.channels];
+            retmsg.payload = umbgen.createMultiChReq(this.address, this.channels);
             node.send(retmsg);
         });
     }
