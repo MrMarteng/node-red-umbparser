@@ -53,9 +53,11 @@ module.exports = function(RED) {
         this.address = config.address;
         this.channels = config.channels;
 
+        let chlist = this.channels.split(",");
+
         node.on('input', function(msg) {
             let retmsg = new Object;
-            retmsg.payload = umbgen.createMultiChReq(this.address, this.channels);
+            retmsg.payload = umbgen.createMultiChReq(this.address, chlist);
             node.send(retmsg);
         });
     }

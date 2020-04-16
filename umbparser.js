@@ -388,14 +388,14 @@ class UMBGenerator
 
     createReq(cmd, cmd_ver, to_addr, from_addr) 
     {
-        this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBF
-        this.readBuffer[umb_consts.UMBFRAME_IDX.VER] = umb_consts.UMBF
-        this.readBuffer[umb_consts.UMBFRAME_IDX.STX] = umb_consts.UMBF
+        this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBFRAME_VAL.SOH;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.VER] = umb_consts.UMBFRAME_VERSION_V10;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.STX] = umb_consts.UMBFRAME_VAL.STX;
         this.readBuffer[umb_consts.UMBFRAME_IDX.LEN] = 2;
         this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = to_addr & 0xFF;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR] = (to_addr & 0xFF00) >> 8;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR+1] = (to_addr & 0xFF00) >> 8;
         this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = from_addr & 0xFF;
-        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR] = (from_addr & 0xFF00) >>8;
+        this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR+1] = (from_addr & 0xFF00) >>8;
         this.readBuffer[umb_consts.UMBFRAME_IDX.CMD] = cmd;
         this.readBuffer[umb_consts.UMBFRAME_IDX.CMDV] = cmd_ver;
     }
@@ -467,18 +467,23 @@ class UMBGenerator
     {
         //@TODO Master address?
         this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, 0xFF01);
-        let u16_chlist = new Uint16Array(channellist.length);
-
-        for(let i=0; i<channellist.length; i++) 
-        {
-        //    let curDataView = new DataView(this.readBuffer, payloadIndex+1, 2);
-            u16_chlist[i] = channellist[i];
-        }
-
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
-        this.readBuffer[payloadIndex] = Uint16Array.from(u16_chlist);
-    
-        this.genFrameCRCEnd(u16_chlist.length);
+        let payloadLength = channellist.length*2;
+
+        let chbuf = new Uint8Array(payloadLength);
+        let chbuf_view = new DataView(chbuf.buffer);
+
+        for(let i=0; i<channellist.length; i++)
+        {
+            chbuf_view.setUint16(i*2, channellist[i], true);
+        }
+        
+        for(let i=0; i<chbuf.length; i++) 
+        {
+            this.readBuffer[payloadIndex+i] = chbuf[i];
+        }
+        
+        this.genFrameCRCEnd(payloadLength);
 
         return this.readBuffer;
     }
