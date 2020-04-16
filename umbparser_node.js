@@ -50,14 +50,12 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
         var node = this;
 
-        this.address = config.address;
-        this.channels = config.channels;
-
-        let chlist = this.channels.split(",");
+        this.address = parseInt(config.address, 16);
+        this.channels = config.channels.split(",");
 
         node.on('input', function(msg) {
             let retmsg = new Object;
-            retmsg.payload = umbgen.createMultiChReq(this.address, chlist);
+            retmsg.payload = umbgen.createMultiChReq(this.address, this.channels);
             node.send(retmsg);
         });
     }
