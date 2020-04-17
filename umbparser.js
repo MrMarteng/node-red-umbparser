@@ -468,16 +468,20 @@ class UMBGenerator
         //@TODO Master address?
         this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, 0xFF01);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
-        let payloadLength = channellist.length*2;
+        let payloadLength = 1+channellist.length*2;
 
         let chbuf = new Uint8Array(payloadLength);
         let chbuf_view = new DataView(chbuf.buffer);
 
+        // [0] - <num channels>
+        chbuf_view.setUint8(0, channellist.length);
+        
+        // [1..n] - <channels>^2
         for(let i=0; i<channellist.length; i++)
         {
-            chbuf_view.setUint16(i*2, channellist[i], true);
+            chbuf_view.setUint16(1+i*2, channellist[i], true);
         }
-        
+
         for(let i=0; i<chbuf.length; i++) 
         {
             this.readBuffer[payloadIndex+i] = chbuf[i];
