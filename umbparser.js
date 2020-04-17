@@ -260,7 +260,7 @@ class UMBParser
             this.parsingIdx++;
 
             /* Check parsing state*/
-            if(this.parserState == PAR_STATE.PARSER_ERROR)
+            if((this.parserState == PAR_STATE.PARSER_ERROR) || (this.parserState == PAR_STATE.PARSER_CRCERROR))
             {
                 /* start parsing at last SOH */
                 this.resetParser();
