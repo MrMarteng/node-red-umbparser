@@ -47,7 +47,7 @@ class UMBFrame
         this.payload = new Uint8Array();
         this.cmd = 0;
         this.status = -1;
-        this.CRC = 0xFFFF;
+        this.crc = 0xFFFF;
         this.parsedData;
     }
 }
