@@ -39,6 +39,24 @@ const FRAME_TYPE =
     UNKNOWN: 'unknown'
 }
 
+const DefaultChannels = new Map(
+    [
+        [100, "Temperature"],
+        [200, "Rel. Humidity"],
+        [300, "Air Pressure"],
+        [400, "Wind Speed"],
+        [500, "Wind Direction"],
+        [600, "Precipiation amount"],
+        [601, "Precipiation amount daily"],
+        [700, "Precipiation tpe"],
+        [900, "Global Radiation"],
+        [903, "Illumination"],
+        [904, "Dawn"],
+        [910, "Sun Direction Azimut"],
+        [911, "Sun Direction Elevation"],
+    ]
+);
+
 class UMBFrame 
 {
     constructor() 
@@ -48,10 +66,19 @@ class UMBFrame
         this.cmd = 0;
         this.status = -1;
         this.crc = 0xFFFF;
-        this.parsedData;
+        this.framedata;
     }
 }
 
+class UMBFrameData
+{
+    constructor(name, rawdata, parsedata)
+    {
+        this.name = name
+        this.raw = rawdata;
+        this.parsed = parsedata;
+    }
+}
 
 class MeasChVal
 {
@@ -63,7 +90,6 @@ class MeasChVal
         this.ch_status = 0;      //!< UMB-Status        
     }
 }
-
 
 class UMBParser 
 {
@@ -297,7 +323,7 @@ class UMBParser
                 switch(parsedFrame.cmd)
                 {
                     case umb_consts.UMB_CMD.GETMULTICHANNEL:
-                        parsedFrame.parsedData = this.cmdRespChData();
+                        parsedFrame.framedata = this.cmdRespChData();
                         break;
                 }
             }
@@ -326,10 +352,11 @@ class UMBParser
             let curDataView = new DataView(this.payload.buffer, index+1, curDataLen);
             curChData.ch_status = curDataView.getUint8(0);
             curChData.ch_number = curDataView.getUint16(1, true);
-            curChData.ch_data_type = curDataView.getUint8(3);
 
             if(curChData.ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
             {
+                curChData.ch_data_type = curDataView.getUint8(3);
+
                 switch(curChData.ch_data_type)
                 {
                     case 0x10:
@@ -372,7 +399,15 @@ class UMBParser
             index += curDataLen+1;
         }
 
-        return chData;
+        let measValues = new Object();
+        chData.forEach(element => {
+            let curMeasName = DefaultChannels.get(element.ch_number);
+            console.log(curMeasName);
+            measValues[curMeasName] = element.ch_value.toPrecision(3);
+        });
+
+        let parsedData = new UMBFrameData("Multi channel data", chData, measValues);
+        return parsedData;
     }
 
 }
