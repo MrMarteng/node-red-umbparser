@@ -334,35 +334,35 @@ class UMBParser
                 {
                     case 0x10:
                         curChData.ch_data_type = "UCHAR";
-                        curChData.ch_value = curDataView.getUint8(3);
+                        curChData.ch_value = curDataView.getUint8(4);
                         break;
                     case 0x11:
                         curChData.ch_data_type = "SCHAR";
-                        curChData.ch_value = curDataView.getInt8(3);
+                        curChData.ch_value = curDataView.getInt8(4);
                         break;
                     case 0x12:
                         curChData.ch_data_type = "USHORT";
-                        curChData.ch_value = curDataView.getUint16(3, true);
+                        curChData.ch_value = curDataView.getUint16(4, true);
                         break;
                     case 0x13:
                         curChData.ch_data_type = "SSHORT";
-                        curChData.ch_value = curDataView.getInt16(3, true);
+                        curChData.ch_value = curDataView.getInt16(4, true);
                         break;
                     case 0x14:
                         curChData.ch_data_type = "ULONG";
-                        curChData.ch_value = curDataView.getUint32(3, true);
+                        curChData.ch_value = curDataView.getUint32(4, true);
                         break;
                     case 0x15:
                         curChData.ch_data_type = "SLONG";
-                        curChData.ch_value = curDataView.getInt32(3, true);
+                        curChData.ch_value = curDataView.getInt32(4, true);
                         break;
                     case 0x16:
                         curChData.ch_data_type = "FLOAT";
-                        curChData.ch_value = curDataView.getFloat32(3, true);
+                        curChData.ch_value = curDataView.getFloat32(4, true);
                         break;
                     case 0x17:
                         curChData.ch_data_type = "DOUBLE";
-                        curChData.ch_value = curDataView.getFloat64(3, true);
+                        curChData.ch_value = curDataView.getFloat64(4, true);
                         break;
                 }
             }
