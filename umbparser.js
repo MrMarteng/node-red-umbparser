@@ -489,7 +489,7 @@ class UMBGenerator
         
         this.genFrameCRCEnd(payloadLength);
 
-        return this.readBuffer;
+        return Buffer.from(this.readBuffer);
     }
 }
 
