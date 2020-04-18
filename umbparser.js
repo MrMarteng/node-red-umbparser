@@ -466,7 +466,7 @@ class UMBGenerator
     createMultiChReq(to_addr, channellist) 
     {
         //@TODO Master address?
-        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, 0xFF01);
+        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, 0xF001);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
         let payloadLength = 1+channellist.length*2;
 
