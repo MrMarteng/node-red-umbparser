@@ -1,6 +1,9 @@
 const CRC = require('crc-full').CRC;
 const umb_consts = require('./umb_consts').umb_consts;
         
+/**
+ * Detailed parsing frame state
+ */
 const FRAME_STATE =
 {
     PAR_SOH : 0,
@@ -20,8 +23,9 @@ const FRAME_STATE =
     PAR_EOT : 14
 }
 
-//!< @name Parser status
-//!@{
+/**
+ * General parsing state
+ */
 const PAR_STATE =
 {
     PARSER_IDLE : 'idle',
@@ -30,8 +34,10 @@ const PAR_STATE =
     PARSER_CRCERROR : 'crc_error',
     PARSER_FINISHED : 'finished',
 }
-//!@}
 
+/**
+ * Frame types
+ */
 const FRAME_TYPE =
 {
     REQUEST: 'request',
@@ -39,6 +45,9 @@ const FRAME_TYPE =
     UNKNOWN: 'unknown'
 }
 
+/**
+ * Default channel name LUT
+ */
 const DefaultChannels = new Map(
     [
         [100, "Temperature"],
@@ -57,8 +66,14 @@ const DefaultChannels = new Map(
     ]
 );
 
+/**
+ * UMBFrame base class
+ */
 class UMBFrame 
 {
+    /**
+     * 
+     */
     constructor() 
     {
         this.type = FRAME_TYPE.UNKNOWN;
@@ -70,8 +85,18 @@ class UMBFrame
     }
 }
 
+/**
+ * UMB frame data class
+ * This oject is the basic object for all information about a parsed UMB frame
+ */
 class UMBFrameData
 {
+    /**
+     * 
+     * @param {string} name Name/Type of the parsed frame
+     * @param {object[]} rawdata Detailed raw data of the parse frame (e.g. MeasChVal)
+     * @param {object[]} parsedata Processed parsed data to be used for further proceeding (JSON)
+     */
     constructor(name, rawdata, parsedata)
     {
         this.name = name
@@ -84,16 +109,18 @@ class MeasChVal
 {
     constructor() 
     {
-        this.ch_number = 0;      //!< Kanalnummer
-        this.ch_value = 0;       //!< aktueller Wert des Kanals
-        this.ch_data_type = 0;   //!< Datentype
-        this.ch_status = 0;      //!< UMB-Status        
+        this.ch_number = 0;      // Kanalnummer
+        this.ch_value = 0;       // aktueller Wert des Kanals
+        this.ch_data_type = 0;   // Datentype
+        this.ch_status = 0;      // UMB-Status        
     }
 }
 
 class UMBParser 
 {
-
+    /**
+     * Basic constructor
+     */
     constructor() 
     {
         this.readBuffer = [];
@@ -108,12 +135,18 @@ class UMBParser
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
     }
 
-    // Returns the 8-bit checksum given an array of byte-sized numbers
+    /**
+     * Returns the 8-bit checksum given an array of byte-sized numbers
+     * @param {Array} byte_array Byte array to calculate the CRC on
+     */
     calcCRC(byte_array) 
     {
         return this.CRC.compute(byte_array);
     } 
 
+    /**
+     * This function resets the internal parserr state
+     */
     resetParser() 
     {
         this.readBuffer.slice(this.parsingSOHIdx);
@@ -264,12 +297,9 @@ class UMBParser
                 {
                     /**
                      * At this state it looks like have a valid UMB Frame
-                     **/
+                     */
                     this.frameLength = 0;
 
-                    /* We need to initialize UMB_FRAME_T manually */
-                    /* @TODO */
-                    
                     this.parserState = PAR_STATE.PARSER_FINISHED;
                 }
                 else
@@ -285,7 +315,7 @@ class UMBParser
 
             this.parsingIdx++;
 
-            /* Check parsing state*/
+            /* Check parsing state */
             if((this.parserState == PAR_STATE.PARSER_ERROR) || (this.parserState == PAR_STATE.PARSER_CRCERROR))
             {
                 /* start parsing at last SOH */
@@ -498,6 +528,12 @@ class UMBGenerator
         return uDataIdx;
     }
     
+    /**
+     * This method generates a mutlichannel UMB request
+     * 
+     * @param {number} to_addr Desination addess for the gernerated UMB request
+     * @param {Array} channellist List of channels to query
+     */
     createMultiChReq(to_addr, channellist) 
     {
         this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
