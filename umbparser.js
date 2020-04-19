@@ -404,7 +404,7 @@ class UMBParser
         chData.forEach(element => {
             let curMeasName = DefaultChannels.get(element.ch_number);
             console.log(curMeasName);
-            measValues[curMeasName] = element.ch_value.toPrecision(3);
+            measValues[curMeasName] = element.ch_value;
         });
 
         let parsedData = new UMBFrameData("Multi channel data", chData, measValues);
