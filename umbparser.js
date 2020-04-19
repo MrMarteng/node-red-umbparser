@@ -45,6 +45,7 @@ const DefaultChannels = new Map(
         [200, "Rel. Humidity"],
         [300, "Air Pressure"],
         [400, "Wind Speed"],
+        [405, "Wind Speed"],
         [500, "Wind Direction"],
         [600, "Precipiation amount"],
         [601, "Precipiation amount daily"],
