@@ -1,12 +1,21 @@
+/**
+ * Copyright (c) 2020
+ *
+ * UMB constants
+ *
+ * @summary UMB constants
+ * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
+ */
 
-//! @name  UMB frame character position (index)
-//! UMB frame layout
-//!
-//!  0  |   1     |  2-3   | 4-5      | 6       | 7   |   8     |   9      | 10 - (7+len) | 8+len | (9+len) - (10+len) | 11+len
-//! --- | ------- | ------ | -------- | ------- | --- | ------- | -------- | ------------ | ----- | ------------------ | ------
-//! SOH | \<ver\> | \<to\> | \<from\> | \<len\> | STX | \<cmd\> | \<verc\> | \<payload\>  | ETX   | \<cs\>             | EOT
-//!
-//@{
+/**
+ * UMB frame character position (index)
+ * 
+ * UMB frame layout
+ *
+ *  0  |   1     |  2-3   | 4-5      | 6       | 7   |   8     |   9      | 10 - (7+len) | 8+len | (9+len) - (10+len) | 11+len
+ * --- | ------- | ------ | -------- | ------- | --- | ------- | -------- | ------------ | ----- | ------------------ | ------
+ * SOH | \<ver\> | \<to\> | \<from\> | \<len\> | STX | \<cmd\> | \<verc\> | \<payload\>  | ETX   | \<cs\>             | EOT
+ */
 const UMBFRAME_IDX = {
     SOH              :  0,    //!< Index of SOH in UMB frame buf
     VER              :  1,    //!< Frame index of frame version identifier
@@ -22,6 +31,9 @@ const UMBFRAME_IDX = {
     REQ_SUBCMD       :  10,   //!< SubCommand field frame index
 }
 
+/**
+ * UMB frame special field values
+ */
 const UMBFRAME_VAL = {
     SOH              :  0x01, //!< Start of Header
     STX              :  0x02, //!< StartOfTXData identifier value
@@ -29,7 +41,9 @@ const UMBFRAME_VAL = {
     EOT              :  0x04, //!< End of transmission
 }
 
-//@}
+/**
+ * Other UMB constants
+ */
 const UMBFRAME_VERSION_V10          = 0x10;
 const UMBFRAME_MASTER_ADDR          = 0xF001;
 const UMBFRAME_MAX_FRAMELENGTH      = 255;
@@ -37,6 +51,9 @@ const UMBFRAME_FRAME_LENGTH_OVERHEAD = 12;
 const UMBFRAME_MAX_PAYLOAD_LENGTH   = (UMBFRAME_MAX_FRAMELENGTH - UMBFRAME_FRAME_LENGTH_OVERHEAD - 2 - 2);
 const UMBFRAME_MAX_LENGTH           = (UMBFRAME_MAX_FRAMELENGTH - UMBFRAME_FRAME_LENGTH_OVERHEAD - 2);
 
+/**
+ * UMB command values
+ */
 const UMB_CMD = {
     GET_HWSW_VERSION : 0x20,
     E2_WRITE : 0x22,
@@ -62,7 +79,7 @@ const UMB_CMD = {
 
 /**
  * UMB Error status
- **/ 
+ */ 
 const ERROR_STATUS =
 {
     STATUS_OK : 0x00,                   //!< 0x00, Command successful
@@ -119,12 +136,17 @@ const ERROR_STATUS =
     STATUS_UNKNOWN_ERR : 0xFF           //!< Unspecified error
 }
 
-
+/**
+ * UMB command version
+ */
 const UMB_CMDVER = {
     V10 : 0x10,
     V11 : 0x11,
 } 
 
+/**
+ * UMB Subcommand values
+ */
 const UMB_SUMBCMD = {
     NONE : 0,
     FWUPDATE_INIT : 0x01,

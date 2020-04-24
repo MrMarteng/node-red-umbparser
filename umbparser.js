@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2020
+ *
+ * UMB parser objects
+ *
+ * @summary UMB parser objects
+ * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
+ */
 const CRC = require('crc-full').CRC;
 const umb_consts = require('./umb_consts').umb_consts;
         
@@ -105,17 +113,30 @@ class UMBFrameData
     }
 }
 
+/**
+ * Measurement channel object
+ */
 class MeasChVal
 {
-    constructor() 
+    /**
+     * MeasChVal constructor
+     * @param {int} number Channel number
+     * @param {int} value Channe value
+     * @param {String} data_type Data type
+     * @param {int} status Channel status
+     */
+    constructor(number, value, data_type, status) 
     {
-        this.ch_number = 0;      // Kanalnummer
-        this.ch_value = 0;       // aktueller Wert des Kanals
-        this.ch_data_type = 0;   // Datentype
-        this.ch_status = 0;      // UMB-Status        
+        this.ch_number = number;      // Kanalnummer
+        this.ch_value = value;       // aktueller Wert des Kanals
+        this.ch_data_type = data_type;   // Datentype
+        this.ch_status = status;      // UMB-Status        
     }
 }
 
+/**
+ * UMB parser object
+ */
 class UMBParser 
 {
     /**
@@ -158,6 +179,13 @@ class UMBParser
         this.frameState = FRAME_STATE.PAR_SOH;
     }
 
+    /**
+     * Parsing function.
+     * This function parses a binary stream for UMB data. The passed buffer 
+     * don't need to include the complate UMB frame and this function can 
+     * be called subsequently.
+     * @param {ArrayBuffer} curBuffer Current binary data
+     */
     ParseReadBuf(curBuffer)
     {
         // return immediately if readLen == 0, handleTransfer now calls the parser also when no characters received (Modbus RTU)
@@ -369,6 +397,13 @@ class UMBParser
         return retval;
     }
     
+    /**
+     * Interal function to analyse response data in more detail
+     * It does not need any paramter and uses the last internally 
+     * parse frame data.
+     * This function will return a UMBFrameData() object with
+     * detailed information about the parsed frame
+     */
     cmdRespChData()
     {
         let numChannels = this.payload[1];
@@ -377,54 +412,55 @@ class UMBParser
 
         for(let i=0; i<numChannels; i++)
         {
-            let curChData = new MeasChVal();
             let curDataLen = this.payload[index];
             let curDataView = new DataView(this.payload.buffer, index+1, curDataLen);
-            curChData.ch_status = curDataView.getUint8(0);
-            curChData.ch_number = curDataView.getUint16(1, true);
+            let ch_status = curDataView.getUint8(0);
+            let ch_number = curDataView.getUint16(1, true);
+            let ch_data_type = "UNKNOWN";
+            let ch_value = 0;
 
-            if(curChData.ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
+            if(ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
             {
-                curChData.ch_data_type = curDataView.getUint8(3);
+                ch_data_type = curDataView.getUint8(3);
 
-                switch(curChData.ch_data_type)
+                switch(ch_data_type)
                 {
                     case 0x10:
-                        curChData.ch_data_type = "UCHAR";
-                        curChData.ch_value = curDataView.getUint8(4);
+                        ch_data_type = "UCHAR";
+                        ch_value = curDataView.getUint8(4);
                         break;
                     case 0x11:
-                        curChData.ch_data_type = "SCHAR";
-                        curChData.ch_value = curDataView.getInt8(4);
+                        ch_data_type = "SCHAR";
+                        ch_value = curDataView.getInt8(4);
                         break;
                     case 0x12:
-                        curChData.ch_data_type = "USHORT";
-                        curChData.ch_value = curDataView.getUint16(4, true);
+                        ch_data_type = "USHORT";
+                        ch_value = curDataView.getUint16(4, true);
                         break;
                     case 0x13:
-                        curChData.ch_data_type = "SSHORT";
-                        curChData.ch_value = curDataView.getInt16(4, true);
+                        ch_data_type = "SSHORT";
+                        ch_value = curDataView.getInt16(4, true);
                         break;
                     case 0x14:
-                        curChData.ch_data_type = "ULONG";
-                        curChData.ch_value = curDataView.getUint32(4, true);
+                        ch_data_type = "ULONG";
+                        ch_value = curDataView.getUint32(4, true);
                         break;
                     case 0x15:
-                        curChData.ch_data_type = "SLONG";
-                        curChData.ch_value = curDataView.getInt32(4, true);
+                        ch_data_type = "SLONG";
+                        ch_value = curDataView.getInt32(4, true);
                         break;
                     case 0x16:
-                        curChData.ch_data_type = "FLOAT";
-                        curChData.ch_value = curDataView.getFloat32(4, true);
+                        ch_data_type = "FLOAT";
+                        ch_value = curDataView.getFloat32(4, true);
                         break;
                     case 0x17:
-                        curChData.ch_data_type = "DOUBLE";
-                        curChData.ch_value = curDataView.getFloat64(4, true);
+                        ch_data_type = "DOUBLE";
+                        ch_value = curDataView.getFloat64(4, true);
                         break;
                 }
             }
             
-            chData.push(curChData);
+            chData.push(new MeasChVal(ch_number, ch_value, ch_data_type, ch_status));
 
             index += curDataLen+1;
         }
@@ -442,15 +478,28 @@ class UMBParser
 
 }
 
+/**
+ * UMB Frame generator object
+ */
 class UMBGenerator 
 {
 
+    /**
+     * UMBGenerator constructor
+     */
     constructor() 
     {
         this.readBuffer = [];       
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
     }
 
+    /**
+     * Fill bais frame data
+     * @param {int} cmd UMB command
+     * @param {int} cmd_ver UMB version
+     * @param {int} to_addr 2byte UMB address of the destiation device
+     * @param {int} from_addr 2byte ZUMB address of the source device
+     */
     createReq(cmd, cmd_ver, to_addr, from_addr) 
     {
         this.readBuffer[umb_consts.UMBFRAME_IDX.SOH] = umb_consts.UMBFRAME_VAL.SOH;
@@ -465,12 +514,20 @@ class UMBGenerator
         this.readBuffer[umb_consts.UMBFRAME_IDX.CMDV] = cmd_ver;
     }
 
-    // Returns the 8-bit checksum given an array of byte-sized numbers
+    /**
+     * Returns the 8-bit checksum given an array of byte-sized numbers
+     * @param {Array} byte_array Binary array to calculate the CRC from
+     */
     calcCRC(byte_array) 
     {
         return this.CRC.compute(byte_array);
     } 
 
+    /**
+     * This method will add the CRC and finalze an UMB frame 
+     * based on the passed payload
+     * @param {int} payloadLength Length of the payload
+     */
     genFrameCRCEnd(payloadLength)
     {
         let crc = 0xFFFF;
@@ -489,6 +546,10 @@ class UMBGenerator
 
     }
 
+    /**
+     * Internal method to retrive the payload index according to the given frame type
+     * @param {FRAME_TYPE} frame_type Response or Request
+     */
     getPayloadDataIndex(frame_type)
     {
         let uDataIdx = (umb_consts.UMBFRAME_IDX.CMDV + 1);

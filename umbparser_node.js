@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2020
+ *
+ * Node-Red UMB parser
+ *
+ * @summary Node-Red UMB parser
+ * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
+ */
 let mod_umbparser = require('./umbparser');
 
 let umbparser = new mod_umbparser.UMBParser();
