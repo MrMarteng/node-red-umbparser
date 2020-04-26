@@ -62,6 +62,7 @@ const DefaultChannels = new Map(
         [200, "Rel. Humidity"],
         [300, "Air Pressure"],
         [400, "Wind Speed"],
+        [405, "Wind Speed"],
         [500, "Wind Direction"],
         [600, "Precipiation amount"],
         [601, "Precipiation amount daily"],
@@ -142,8 +143,9 @@ class UMBParser
     /**
      * Basic constructor
      */
-    constructor() 
+    constructor(node) 
     {
+        this.node = node;
         this.readBuffer = [];
         this.parsingIdx = 0;
         this.parsingSOHIdx = 0;
@@ -468,7 +470,11 @@ class UMBParser
         let measValues = new Object();
         chData.forEach(element => {
             let curMeasName = DefaultChannels.get(element.ch_number);
-            console.log(curMeasName);
+            this.node.log(curMeasName);
+            if (curMeasName in measValues)
+            {
+                this.node.error("muitple measurements of " + curMeasName + "! Please make sure to query only one");
+            }
             measValues[curMeasName] = element.ch_value.toPrecision(3);
         });
 
@@ -487,8 +493,9 @@ class UMBGenerator
     /**
      * UMBGenerator constructor
      */
-    constructor() 
+    constructor(node) 
     {
+        this.node = node;
         this.readBuffer = [];       
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
     }

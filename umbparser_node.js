@@ -8,23 +8,25 @@
  */
 let mod_umbparser = require('./umbparser');
 
-let umbparser = new mod_umbparser.UMBParser();
-let umbgen = new mod_umbparser.UMBGenerator();
 
 module.exports = function(RED) {
     function UMBParserNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
+        let umbparser = new mod_umbparser.UMBParser(this);
         node.on('input', function(msg) {
             in_data = null;
+
             if(Array.isArray(msg.payload))
             {
                 in_data = Buffer.from(msg.payload);
             }
+
             if(msg.payload instanceof Buffer)
             {
                 in_data = msg.payload;
             }
+
             if(in_data != null)
             {
                 this.log("Valid input buffer detected");
@@ -57,6 +59,7 @@ module.exports = function(RED) {
     function UMBGenNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
+        let umbgen = new mod_umbparser.UMBGenerator(this);
 
         this.address = parseInt(config.address, 16);
         this.channels = config.channels.split(",");
