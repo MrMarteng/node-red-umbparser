@@ -3,23 +3,9 @@
         category: 'config',
         color: '#a6bbcf',
         defaults: {
-            name: {value: "WS10"},
+            name: {value: ""},
             channels: {value: [
-                {enabled:true, ch:"100", chname:"Temperature"},
-                {enabled:true, ch:"200", chname:"Rel. Humidity"},
-                {enabled:true, ch:"300", chname:"Air Pressure"},
-                {enabled:true, ch:"400", chname:"Wind Speed"},
-                {enabled:true, ch:"405", chname:"Wind Speed"},
-                {enabled:true, ch:"500", chname:"Wind Direction"},
-                {enabled:true, ch:"600", chname:"Precipiation amount"},
-                {enabled:true, ch:"601", chname:"Precipiation amount daily"},
-                {enabled:true, ch:"700", chname:"Precipiation tpe"},
-                {enabled:true, ch:"900", chname:"Global Radiation"},
-                {enabled:true, ch:"903", chname:"Illumination"},
-                {enabled:true, ch:"904", chname:"Dawn"},
-                {enabled:true, ch:"910", chname:"Sun Direction Azimut"},
-                {enabled:true, ch:"911", chname:"Sun Direction Elevation"},
-                ]},
+                {enabled:false, ch:"", chname:""}]},
         },
         icon: "file.png",
         label: function() {
@@ -50,12 +36,24 @@
                 sortable: false,
                 removable: true
             });
-
+            
             console.log("channel-list: " + JSON.stringify(node.channels));
             for (var i=0;i<this.channels.length;i++) {
                 var channel = this.channels[i];
                 $("#node-config-input-channellist").editableList('addItem', channel);
             }
+        
+            $("#node-config-lookup-channels").click(function() {
+                $("#node-config-lookup-channels").addClass('disabled');
+                $.getJSON('umbchannels',function(chlist) {
+                    $("#node-config-lookup-channels").removeClass('disabled');
+                    $("#node-config-input-channellist").editableList("empty");
+                    $.each(chlist.channels.value, function(i, channel) {
+                        $("#node-config-input-channellist").editableList('addItem', channel);
+                    });
+                    $("#node-config-input-name").val(chlist.name.value);
+                });
+            });
         },
         oneditsave: function() {
             var channels = $("#node-config-input-channellist").editableList('items');
@@ -83,13 +81,18 @@
 <script type="text/html" data-template-name="umbchannels" >
     <body>
     <div class="form-row">
+        <a id="node-config-lookup-channels" class="red-ui-button"
+            ><i class="fa fa-download"></i>
+        </a>
+    </div>
+    <div class="form-row">
         <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
         <input type="text" id="node-config-input-name">
     </div>
     <div class="form-row">
-            <label for="node-config-input-channellist"><i class="icon-tag"></i> Channels</label>
-            <div id="node-config-input-channellist">
-            </div>
+        <label for="node-config-input-channellist"><i class="icon-tag"></i> Channels</label>
+        <div id="node-config-input-channellist">
+        </div>
     </div>
     </body>
 </script>
