@@ -8,11 +8,11 @@
  */
 let mod_umbparser = require('./umbparser');
 
-
 module.exports = function(RED) {
     function UMBParserNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
+        
         let umbparser = new mod_umbparser.UMBParser(this);
         node.on('input', function(msg) {
             in_data = null;
@@ -59,10 +59,20 @@ module.exports = function(RED) {
     function UMBGenNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
+
+        this.cfg_channels = RED.nodes.getNode(config.channels);
+
         let umbgen = new mod_umbparser.UMBGenerator(this);
 
         this.address = parseInt(config.address, 16);
-        this.channels = config.channels.split(",");
+        
+        if(this.cfg_channels)
+        {
+            this.channels = [];
+            this.cfg_channels.channels.forEach(element => {
+                this.channels.push(element.ch);
+            });
+        }
 
         node.on('input', function(msg) {
             let retmsg = new Object;
