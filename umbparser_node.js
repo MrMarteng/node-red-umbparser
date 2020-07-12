@@ -70,7 +70,8 @@ module.exports = function(RED) {
         {
             this.channels = [];
             this.cfg_channels.channels.forEach(element => {
-                this.channels.push(element.ch);
+                if(element.enabled)
+                    this.channels.push(element.ch);
             });
         }
 
