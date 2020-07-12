@@ -10,7 +10,8 @@
   "license": "ISC",
   "node-red": {
     "nodes": {
-      "lower-case": "umbparser_node.js"
+      "umbparser": "umbparser_node.js",
+      "umbchannels": "umb_channels.js"
     }
   },
   "dependencies": {

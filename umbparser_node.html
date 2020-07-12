@@ -19,7 +19,7 @@
         defaults: {
             name: {value:""},
             address: {value:"A001",required:true},
-            channels: {value:"100,200",required:true},
+            channels: {value:"", type:"umbchannels"},
         },
         inputs:1,
         outputs:1,
@@ -27,37 +27,7 @@
         label: function() {
             return "UMB umbgenerator";
         },
-        oneditprepare: function () {
-            const DefaultChannels = new Map(
-                [
-                    [100, "Temperature"],
-                    [200, "Rel. Humidity"],
-                    [300, "Air Pressure"],
-                    [400, "Wind Speed"],
-                    [405, "Wind Speed"],
-                    [500, "Wind Direction"],
-                    [600, "Precipiation amount"],
-                    [601, "Precipiation amount daily"],
-                    [700, "Precipiation tpe"],
-                    [900, "Global Radiation"],
-                    [903, "Illumination"],
-                    [904, "Dawn"],
-                    [910, "Sun Direction Azimut"],
-                    [911, "Sun Direction Elevation"],
-                ]
-            );
-            document.getElementById("node-input-channels").innerHTML = "";
-            DefaultChannels.forEach(function (value, key, map) {
-                var option = document.createElement("li");
-                option.style = "margin: 5px;";
-                option.innerHTML += "<input type=\"checkbox\" style=\"width:auto; margin: 2px;\" name=\"channels[]\" value=\"" + key + "\">";
-                option.innerHTML +=  "<lable style=\"margin:4px\">" + value + "</lable>";
-                document.getElementById("node-input-channels").appendChild(option);
-            });
-
-            
-            
-        }
+        
     });
 </script>
 
@@ -84,17 +54,14 @@
     </div>
     <div class="form-row">
         <label for="node-input-units"><i class="icon-tag"></i> Units</label>
-        <select class="node-input-units" onchange="generateChSel()" >
+        <select class="node-input-units" >
             <option value="metric">metric</option>
             <option value="imperial">imperial</option>
           </select>
     </div>
     <div class="form-row">
-            <label for="node-input-channels"><i class="icon-tag"></i> Channels</label>
-            <fieldset >
-                <ul id="node-input-channels" style="list-style: none; column-count: 2;">
-                </ul>
-            </fieldset>
+        <label for="node-input-channels"><i class="icon-tag"></i> Channels</label>
+        <input type="text" id="node-input-channels">
     </div>
     </body>
 </script>
