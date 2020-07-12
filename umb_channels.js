@@ -11,6 +11,7 @@ let mod_umbparser = require('./umbparser');
 module.exports = function(RED) {
     function UMBChannels(config) {
         RED.nodes.createNode(this, config);
+        this.channels = config.channels;
         var node = this;
     }
     RED.nodes.registerType("umbchannels", UMBChannels);
