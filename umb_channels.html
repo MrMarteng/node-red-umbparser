@@ -5,20 +5,20 @@
         defaults: {
             name: {value: "WS10"},
             channels: {value: [
-                {ch:"100", chname:"Temperature"},
-                {ch:"200", chname:"Rel. Humidity"},
-                {ch:"300", chname:"Air Pressure"},
-                {ch:"400", chname:"Wind Speed"},
-                {ch:"405", chname:"Wind Speed"},
-                {ch:"500", chname:"Wind Direction"},
-                {ch:"600", chname:"Precipiation amount"},
-                {ch:"601", chname:"Precipiation amount daily"},
-                {ch:"700", chname:"Precipiation tpe"},
-                {ch:"900", chname:"Global Radiation"},
-                {ch:"903", chname:"Illumination"},
-                {ch:"904", chname:"Dawn"},
-                {ch:"910", chname:"Sun Direction Azimut"},
-                {ch:"911", chname:"Sun Direction Elevation"},
+                {enabled:true, ch:"100", chname:"Temperature"},
+                {enabled:true, ch:"200", chname:"Rel. Humidity"},
+                {enabled:true, ch:"300", chname:"Air Pressure"},
+                {enabled:true, ch:"400", chname:"Wind Speed"},
+                {enabled:true, ch:"405", chname:"Wind Speed"},
+                {enabled:true, ch:"500", chname:"Wind Direction"},
+                {enabled:true, ch:"600", chname:"Precipiation amount"},
+                {enabled:true, ch:"601", chname:"Precipiation amount daily"},
+                {enabled:true, ch:"700", chname:"Precipiation tpe"},
+                {enabled:true, ch:"900", chname:"Global Radiation"},
+                {enabled:true, ch:"903", chname:"Illumination"},
+                {enabled:true, ch:"904", chname:"Dawn"},
+                {enabled:true, ch:"910", chname:"Sun Direction Azimut"},
+                {enabled:true, ch:"911", chname:"Sun Direction Elevation"},
                 ]},
         },
         icon: "file.png",
@@ -34,18 +34,20 @@
             $("#node-config-input-channellist").css('min-height','650px').css('min-width','450px').editableList({
                 addItem: function(container, i, channel) {
                     var row = $('<div/>').appendTo(container);
-                    $('<label/>',{for:"node-config-input-ch-"+i, style:"margin:3px; width:auto; vertical-align:middle"}).text("Channel").appendTo(row);
+                    var chena = $('<input/>',{id:"node-config-input-ch-ena-"+i,type:"checkbox", style:"margin:3px; width:10px;vertical-align:middle"}).appendTo(row);
+                    $('<label/>',{for:"node-config-input-ch-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Channel").appendTo(row);
                     var ch = $('<input/>',{id:"node-config-input-ch-"+i,type:"text", style:"width:60px; vertical-align:middle"}).appendTo(row);
                     $('<label/>',{for:"node-config-input-chname-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Name").appendTo(row);
                     var chname = $('<input/>',{id:"node-config-input-chname-"+i, type:"text", style:"width:auto; vertical-align:middle"}).appendTo(row);
                     ch.val(channel.ch);
                     chname.val(channel.chname);
+                    chena.prop("checked", channel.enabled);
                 },
                 removeItem: function(opt) {
                 },
                 sortItems: function(rules) {
                 },
-                sortable: true,
+                sortable: false,
                 removable: true
             });
 
@@ -61,10 +63,12 @@
             var chArray = [];
             channels.each(function(i) {
                 var deviceElement = $(this);
+                var chena = deviceElement.find("#node-config-input-ch-ena-"+i).prop("checked");
                 var ch = deviceElement.find("#node-config-input-ch-"+i).val();
                 var chname = deviceElement.find("#node-config-input-chname-"+i).val();
                 console.log(ch, chname);
                 var d = {};
+                d['enabled']= chena;
                 d['ch']=ch;
                 d['chname']=chname;
                 console.log(d);
