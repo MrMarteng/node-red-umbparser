@@ -77,7 +77,35 @@ module.exports = function(RED) {
 
         node.on('input', function(msg) {
             let retmsg = new Object;
-            retmsg.payload = umbgen.createMultiChReq(this.address, this.channels);
+            let umbparser = new mod_umbparser.UMBParser(this);
+
+            in_data = umbgen.createMultiChReq(this.address, this.channels);
+
+            if(in_data != null)
+            {
+                this.log("Valid input buffer detected");
+                let parsedFrame = umbparser.ParseReadBuf(in_data);
+
+                this.log("Parsing status:")
+                this.log("parser status: " + parsedFrame.parserState);
+                if(parsedFrame.parserState == "finished")
+                {
+                    this.log("Frametype: " + parsedFrame.umbframe.type);
+                    this.log("Framestatus: " + parsedFrame.umbframe.status);
+                    this.log("Framecmd: " + parsedFrame.umbframe.cmd);
+                    retmsg.payload = parsedFrame;
+                }
+                else if(parsedFrame.parserState == "processing")
+                {
+                    this.log("processing...");
+                }
+            }
+            else
+            {
+                this.error("invalid paramter");
+                this.log("invalid paramter");
+            }
+
             node.send(retmsg);
         });
     }
