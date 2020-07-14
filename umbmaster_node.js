@@ -56,7 +56,7 @@ module.exports = function(RED) {
 
         });
     }
-    function UMBGenNode(config) {
+    function UMBMasterNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
 
@@ -82,5 +82,5 @@ module.exports = function(RED) {
         });
     }
     RED.nodes.registerType("umbparser", UMBParserNode);
-    RED.nodes.registerType("umbgenerator", UMBGenNode);
+    RED.nodes.registerType("umbmaster", UMBMasterNode);
 }

@@ -1,19 +1,5 @@
 <script type="text/javascript">
-    
-    RED.nodes.registerType('umbparser',{
-        category: 'parser',
-        color: '#a6bbcf',
-        defaults: {
-            name: {value:""}
-        },
-        inputs:1,
-        outputs:1,
-        icon: "file.png",
-        label: function() {
-            return "UMB parser";
-        }
-    });
-    RED.nodes.registerType('umbgenerator',{
+    RED.nodes.registerType('umbmaster',{
         category: 'function',
         color: '#a6bbcf',
         defaults: {
@@ -25,24 +11,13 @@
         outputs:1,
         icon: "file.png",
         label: function() {
-            return "UMB umbgenerator";
+            return "UMB Master";
         },
         
     });
 </script>
 
-<script type="text/html" data-template-name="umbparser">
-    <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
-</script>
-
-<script type="text/html" data-help-name="umbparser">
-    <p>This is a parser for UMB frames</p>
-</script>
-
-<script type="text/html" data-template-name="umbgenerator" >
+<script type="text/html" data-template-name="umbmaster" >
     <body>
     <div class="form-row" >
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>

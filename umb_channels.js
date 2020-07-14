@@ -36,6 +36,6 @@ module.exports = function(RED) {
     RED.nodes.registerType("umbchannels", UMBChannels);
 
     RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {
-            res.json(umb_channels);
+        res.json(umb_channels);
     });
 }
