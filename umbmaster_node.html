@@ -4,7 +4,9 @@
         color: '#a6bbcf',
         defaults: {
             name: {value:""},
-            address: {value:"A001",required:true},
+            dev_address: {value:"A001", required:true},
+            ip_address: {value:"192.168.0.10", required:true},
+            ip_port: {value:"4095", required:true},
             channels: {value:"", type:"umbchannels"},
         },
         inputs:1,
@@ -24,8 +26,14 @@
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-address"><i class="icon-tag"></i> Address</label>
-        <input type="text" id="node-input-address">
+        <label for="node-input-dev_address"><i class="icon-tag"></i>Device Address</label>
+        <input type="text" id="node-input-dev_address">
+    </div>
+    <div class="form-row">
+        <label for="node-input-ip_address"><i class="fa fa-globe"></i> Device IP</label>
+        <input type="text" id="node-input-ip_address" placeholder="ip.address" style="width:45%" dir="">
+        <span data-i18n="node-red:tcpin.label.port">Port</span>
+        <input type="text" id="node-input-ip_port" style="width:60px" dir="">
     </div>
     <div class="form-row">
         <label for="node-input-units"><i class="icon-tag"></i> Units</label>
