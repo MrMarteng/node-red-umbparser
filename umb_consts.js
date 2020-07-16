@@ -137,6 +137,14 @@ const ERROR_STATUS =
 }
 
 /**
+ * UMB timeout
+ */
+const UMB_TIMEOUT = {
+    TIMEOUT_LONG : 510,
+    TIMEOUT : 60
+}
+
+/**
  * UMB command version
  */
 const UMB_CMDVER = {
@@ -199,5 +207,6 @@ module.exports.umb_consts = {
     UMB_CMD,
     UMB_CMDVER,
     UMB_SUMBCMD,
+    UMB_TIMEOUT,
     ERROR_STATUS
 }
