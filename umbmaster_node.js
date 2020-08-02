@@ -14,6 +14,8 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
         var node = this;
 
+        node.status({fill:"red",shape:"ring",text:"disconnected"});
+
         this.cfg_channels = RED.nodes.getNode(config.channels);
 
         let umbgen = new mod_umbparser.UMBGenerator(this);
@@ -29,54 +31,70 @@ module.exports = function(RED) {
             });
         }
 
+        const net = require('net');
+        var client = undefined;
+        let umbparser = new mod_umbparser.UMBParser(this);
+        
         node.on('input', function(msg) {
             let retmsg = new Object;
-            let umbparser = new mod_umbparser.UMBParser(this);
-            const net = require('net');
+            let resp_pending = true;
 
             let umbreq = umbgen.createMultiChReq(this.address, this.channels);
-            var client = new net.Socket();
-
-            client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG, function() {
-                console.loge('Socket timeout')
-            });
-            client.on('error', function(ex) {
-                console.log("handled error");
-                console.log(ex);
-            });
-            client.on('timeout', function() {
-                retmsg.payload = "Response timeout";
-                node.send(retmsg);
-                client.destroy();
-            });
-            client.on('data', function(data) {
-                console.log('Received ' + data.length + 'bytes');
-                data_test = data
-                
-                console.log("Valid input buffer detected");
-                let parsedFrame = umbparser.ParseReadBuf(data_test);
-
-                node.log("Parsing status:")
-                node.log("parser status: " + parsedFrame.parserState);
-                if(parsedFrame.parserState == "finished")
-                {
-                    node.log("Frametype: " + parsedFrame.umbframe.type);
-                    node.log("Framestatus: " + parsedFrame.umbframe.status);
-                    node.log("Framecmd: " + parsedFrame.umbframe.cmd);
-                    retmsg.payload = parsedFrame;
-                    node.send(retmsg);
-                    client.destroy();
-                }
-                else if(parsedFrame.parserState == "processing")
-                {
-                    node.log("processing...");
-                }
-            });
-            client.connect(config.ip_port, config.ip_address, function() {
-                console.log('Connected');
+            
+            if(client == undefined || client.destroyed) {
+                client = new net.Socket();
+                client.setNoDelay(true);
+                client.on('error', function(ex) {
+                    node.log("handled error");
+                    node.log(ex);
+                });
+                client.on('close', function() {
+                    node.log('closed');
+                    node.status({fill:"red",shape:"ring",text:"disconnected"});
+                })
+                client.on('data', function(data) {
+                    let retmsg = new Object;
+        
+                    node.log('Received ' + data.length + 'bytes');
+                    
+                    node.log("Valid input buffer detected");
+                    let parsedFrame = umbparser.ParseReadBuf(data);
+        
+                    node.log("Parsing status:")
+                    node.log("parser status: " + parsedFrame.parserState);
+                    if(parsedFrame.parserState == "finished")
+                    {
+                        node.log("Frametype: " + parsedFrame.umbframe.type);
+                        node.log("Framestatus: " + parsedFrame.umbframe.status);
+                        node.log("Framecmd: " + parsedFrame.umbframe.cmd);
+                        retmsg.payload = parsedFrame;
+                        node.send(retmsg);
+                        resp_pending = false;
+                    }
+                    else if(parsedFrame.parserState == "processing")
+                    {
+                        node.log("processing...");
+                    }
+                });
+                client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG, function() {
+                    node.log('timeout');
+                    if(resp_pending) {
+                        node.log('Data timeout');
+                        client.destroy();
+                        let retmsg = new Object;
+                        retmsg.payload = "Response timeout";
+                        node.send(retmsg);
+                    }
+                });
+                client.connect(config.ip_port, config.ip_address, function() {
+                    node.log('Connected');
+                    node.status({fill:"green",shape:"dot",text:"connected"});
+                    client.write(umbreq);
+                });
+            }
+            else {
                 client.write(umbreq);
-            });
-                
+            }
         });
     }
     RED.nodes.registerType("umbmaster", UMBMasterNode);
