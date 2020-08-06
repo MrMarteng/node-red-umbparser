@@ -385,6 +385,9 @@ class UMBParser
                     case umb_consts.UMB_CMD.GETMULTICHANNEL:
                         parsedFrame.framedata = this.cmdRespChData();
                         break;
+                    case umb_consts.UMB_CMD.GETDEVINFO:
+                        parsedFrame.framedata = this.cmdRespDevinfo();
+                        break;
                 }
             }
 
@@ -400,7 +403,7 @@ class UMBParser
     }
     
     /**
-     * Interal function to analyse response data in more detail
+     * Interal function to analyse channel query response data in more detail
      * It does not need any paramter and uses the last internally 
      * parse frame data.
      * This function will return a UMBFrameData() object with
@@ -479,6 +482,41 @@ class UMBParser
         });
 
         let parsedData = new UMBFrameData("Multi channel data", chData, measValues);
+        return parsedData;
+    }
+
+    /**
+     * Interal function to analyse device info sub-commands
+     */
+    cmdRespDevinfo()
+    {
+        switch(this.payload[1])
+        {
+            case 0x15:
+                return this.cmdRespDevinfo_ChNum();
+                break;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChNum()
+    {
+        let chData = new Array();
+
+        let numChannelsView = new DataView(this.payload.buffer, 2, 2);
+        let numChannels = numChannelsView.getUint16(0, true);
+        let numBlocks = this.payload[4];
+
+        let devInfoNumCh = new Object();
+        devInfoNumCh.numChannels = numChannels;
+        devInfoNumCh.numBlocks = numBlocks;
+
+        let parsedData = new UMBFrameData("Number of Channels", devInfoNumCh, devInfoNumCh);
         return parsedData;
     }
 
@@ -628,6 +666,40 @@ class UMBGenerator
         this.genFrameCRCEnd(payloadLength);
 
         return Buffer.from(this.readBuffer);
+    }
+
+    /**
+     * This method generates a device info request
+     * 
+     * @param {number} to_addr Desination addess for the gernerated UMB request
+     * @param {uint8} subcmd subcommand
+     * @param {array} parm parameter
+     */
+    createDevInfoReq(to_addr, subcmd, option=undefined) 
+    {
+        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
+        let payloadLength = 0;
+
+        this.readBuffer[payloadIndex++] = subcmd;
+        payloadLength++;
+
+        if((option != undefined) && (typeof option == array)) {
+            option.forEach(element => {
+                this.readBuffer[payloadIndex] = element;
+                payloadLength++;
+                payloadIndex++
+            });
+        }
+        
+        this.genFrameCRCEnd(payloadLength);
+
+        return Buffer.from(this.readBuffer);
+    }
+
+    createChNumReq(to_addr)
+    {
+        return this.createDevInfoReq(to_addr, 0x15)
     }
 }
 

@@ -39,8 +39,9 @@ module.exports = function(RED) {
             let retmsg = new Object;
             let resp_pending = true;
 
-            let umbreq = umbgen.createMultiChReq(this.address, this.channels);
-            
+            //let umbreq = umbgen.createMultiChReq(this.address, this.channels);
+            let umbreq = umbgen.createChNumReq(this.address);
+
             if(client == undefined || client.destroyed) {
                 client = new net.Socket();
                 client.setNoDelay(true);
