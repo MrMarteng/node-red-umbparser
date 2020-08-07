@@ -495,6 +495,9 @@ class UMBParser
             case 0x15:
                 return this.cmdRespDevinfo_ChNum();
                 break;
+            case 0x16:
+                return this.cmdRespDevinfo_ChList();
+                break;
         }
 
         return undefined;
@@ -517,6 +520,36 @@ class UMBParser
         devInfoNumCh.numBlocks = numBlocks;
 
         let parsedData = new UMBFrameData("Number of Channels", devInfoNumCh, devInfoNumCh);
+        return parsedData;
+    }
+
+    /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChList()
+    {
+        let chList = new Array();
+
+        let index = 4;
+        let block = this.payload[2];
+        let numChannels = this.payload[3];
+
+        for(let i=0; i<numChannels; i++)
+        {
+            let curhannelView = new DataView(this.payload.buffer, index, 2);
+            let curChannel = curhannelView.getUint16(0, true);
+
+            index += 2;
+            
+            chList.push(curChannel);
+        }
+
+        let  chListData = new Object();
+        chListData.block = block;
+        chListData.channels = chList;
+
+        let parsedData = new UMBFrameData("Channel list", chListData, chListData);
         return parsedData;
     }
 
@@ -684,7 +717,7 @@ class UMBGenerator
         this.readBuffer[payloadIndex++] = subcmd;
         payloadLength++;
 
-        if((option != undefined) && (typeof option == array)) {
+        if((option != undefined) && (Array.isArray(option))) {
             option.forEach(element => {
                 this.readBuffer[payloadIndex] = element;
                 payloadLength++;
@@ -700,6 +733,11 @@ class UMBGenerator
     createChNumReq(to_addr)
     {
         return this.createDevInfoReq(to_addr, 0x15)
+    }
+
+    createChListReq(to_addr)
+    {
+        return this.createDevInfoReq(to_addr, 0x16, [0])
     }
 }
 
