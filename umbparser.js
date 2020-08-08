@@ -126,12 +126,41 @@ class MeasChVal
      * @param {String} data_type Data type
      * @param {int} status Channel status
      */
-    constructor(number, value, data_type, status, dview) 
+    constructor(number, data_type, status, dview) 
     {
         this.ch_number = number;      // Kanalnummer
-        this.ch_value = value;       // aktueller Wert des Kanals
-        this.ch_data_type = data_type;   // Datentype
-        this.ch_status = status;      // UMB-Status        
+        this.ch_data_type = MeasChVal.getDataTypeName(data_type);   // Datentype
+        this.ch_status = status;      // UMB-Status   
+        this.ch_value = NaN;
+
+        switch(data_type)
+        {
+            case 0x10:
+                this.ch_value = dview.getUint8(0);
+                break;
+            case 0x11:
+                this.ch_value = dview.getInt8(0);
+                break;
+            case 0x12:
+                this.ch_value = dview.getUint16(0, true);
+                break;
+            case 0x13:
+                this.ch_value = dview.getInt16(0, true);
+                break;
+            case 0x14:
+                this.ch_value = dview.getUint32(0, true);
+                break;
+            case 0x15:
+                this.ch_value = dview.getInt32(0, true);
+                break;
+            case 0x16:
+                this.ch_value = dview.getFloat32(0, true);
+                break;
+            case 0x17:
+                this.ch_value = dview.getFloat64(0, true);
+                break;
+        }
+
     }
 
     static getDataTypeName(dtype)
@@ -480,53 +509,18 @@ class UMBParser
             let curDataLen = this.payload[index];
             let curDataView = new DataView(this.payload.buffer, index+1, curDataLen);
             let ch_status = curDataView.getUint8(0);
-            let ch_number = curDataView.getUint16(1, true);
-            let ch_data_type = "UNKNOWN";
-            let ch_value = 0;
 
             if(ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
             {
-                ch_data_type = curDataView.getUint8(3);
+                let ch_number = curDataView.getUint16(1, true);
+                let ch_data_type = curDataView.getUint8(3);
 
-                switch(ch_data_type)
-                {
-                    case 0x10:
-                        ch_data_type = "UCHAR";
-                        ch_value = curDataView.getUint8(4);
-                        break;
-                    case 0x11:
-                        ch_data_type = "SCHAR";
-                        ch_value = curDataView.getInt8(4);
-                        break;
-                    case 0x12:
-                        ch_data_type = "USHORT";
-                        ch_value = curDataView.getUint16(4, true);
-                        break;
-                    case 0x13:
-                        ch_data_type = "SSHORT";
-                        ch_value = curDataView.getInt16(4, true);
-                        break;
-                    case 0x14:
-                        ch_data_type = "ULONG";
-                        ch_value = curDataView.getUint32(4, true);
-                        break;
-                    case 0x15:
-                        ch_data_type = "SLONG";
-                        ch_value = curDataView.getInt32(4, true);
-                        break;
-                    case 0x16:
-                        ch_data_type = "FLOAT";
-                        ch_value = curDataView.getFloat32(4, true);
-                        break;
-                    case 0x17:
-                        ch_data_type = "DOUBLE";
-                        ch_value = curDataView.getFloat64(4, true);
-                        break;
-                }
-            }
+                let curMeasChVal = new MeasChVal(ch_number, ch_data_type, ch_status, new DataView(this.payload.buffer, index+5))
             
-            chData.push(new MeasChVal(ch_number, ch_value, ch_data_type, ch_status));
+                chData.push(curMeasChVal);
+            }
 
+            
             index += curDataLen+1;
         }
 
