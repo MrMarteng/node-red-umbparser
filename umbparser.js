@@ -126,12 +126,72 @@ class MeasChVal
      * @param {String} data_type Data type
      * @param {int} status Channel status
      */
-    constructor(number, value, data_type, status) 
+    constructor(number, value, data_type, status, dview) 
     {
         this.ch_number = number;      // Kanalnummer
         this.ch_value = value;       // aktueller Wert des Kanals
         this.ch_data_type = data_type;   // Datentype
         this.ch_status = status;      // UMB-Status        
+    }
+
+    static getDataTypeName(dtype)
+    {
+        let ch_data_type = "UNKOWN";
+        switch(dtype)
+        {
+            case 0x10:
+                ch_data_type = "UCHAR";
+                break;
+            case 0x11:
+                ch_data_type = "SCHAR";
+                break;
+            case 0x12:
+                ch_data_type = "USHORT";
+                break;
+            case 0x13:
+                ch_data_type = "SSHORT";
+                break;
+            case 0x14:
+                ch_data_type = "ULONG";
+                break;
+            case 0x15:
+                ch_data_type = "SLONG";
+                break;
+            case 0x16:
+                ch_data_type = "FLOAT";
+                break;
+            case 0x17:
+                ch_data_type = "DOUBLE";
+                break;
+        }
+        return ch_data_type;
+    }               
+
+    static getMeasTypeName(chtype)
+    {
+        let meas_name = "UNKOWN";
+        switch(chtype)
+        {
+            case 0x10:
+                meas_name = "Current";
+                break;
+            case 0x11:
+                meas_name = "Minimum";
+                break;
+            case 0x12:
+                meas_name = "Maximum";
+                break;
+            case 0x13:
+                meas_name = "Average";
+                break;
+            case 0x14:
+                meas_name = "Sum";
+                break;
+            case 0x15:
+                meas_name = "Vector";
+                break;
+        }
+        return meas_name;
     }
 }
 
@@ -498,6 +558,9 @@ class UMBParser
             case 0x16:
                 return this.cmdRespDevinfo_ChList();
                 break;
+            case 0x30:
+                return this.cmdRespDevinfo_ChDetails();
+                break;
         }
 
         return undefined;
@@ -550,6 +613,38 @@ class UMBParser
         chListData.channels = chList;
 
         let parsedData = new UMBFrameData("Channel list", chListData, chListData);
+        return parsedData;
+    }
+
+     /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChDetails()
+    {
+        let chDetailsRaw = new Object();
+
+        let byteIdx = 0;
+        const payloadOffset = 2;
+
+        // <channel>2 <messgröße>20, <einheit>15, <mw_typ>, <date_typ>, <min>, <max>
+        let chDetailsDV1 = new DataView(this.payload.buffer, payloadOffset, 2+20+15+1+1);
+        chDetailsRaw.channel = chDetailsDV1.getUint16(byteIdx, true); 
+        byteIdx += 2;
+        chDetailsRaw.name = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+20));
+        byteIdx += 20;
+        chDetailsRaw.unit = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+15));
+        byteIdx += 15;
+        chDetailsRaw.ch_type = chDetailsDV1.getUint8(byteIdx, true);
+        byteIdx++;
+        chDetailsRaw.data_type = chDetailsDV1.getUint8(byteIdx, true);
+        byteIdx++;
+
+        let chDetails = Object.assign({}, chDetailsRaw);
+        chDetails.ch_type = MeasChVal.getMeasTypeName(chDetailsRaw.ch_type);
+        chDetails.data_type = MeasChVal.getDataTypeName(chDetailsRaw.data_type);
+
+        let parsedData = new UMBFrameData("Channel Details", chDetailsRaw, chDetails);
         return parsedData;
     }
 
@@ -735,9 +830,14 @@ class UMBGenerator
         return this.createDevInfoReq(to_addr, 0x15)
     }
 
-    createChListReq(to_addr)
+    createChListReq(to_addr, block)
     {
-        return this.createDevInfoReq(to_addr, 0x16, [0])
+        return this.createDevInfoReq(to_addr, 0x16, [block])
+    }
+
+    createChDetailsReq(to_addr, channel)
+    {
+        return this.createDevInfoReq(to_addr, 0x30, [channel&0xFF, (channel&0xFF00)>>8])
     }
 }
 
