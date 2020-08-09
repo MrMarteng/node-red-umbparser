@@ -519,7 +519,6 @@ class UMBParser
             
                 chData.push(curMeasChVal);
             }
-
             
             index += curDataLen+1;
         }

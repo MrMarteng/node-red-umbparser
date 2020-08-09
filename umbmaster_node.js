@@ -6,22 +6,39 @@
  * @summary Node-Red UMB parser
  * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
  */
+let mod_umbhandler = require('./umbhandler');
 let mod_umbparser = require('./umbparser');
+
+const { parse } = require('path');
 const umb_consts = require('./umb_consts').umb_consts;
+
+var umb_channels = {
+    name: {value: "WS10"},
+    channels: {value: [
+        {enabled:true, ch:"100", chname:"Temperature"},
+        {enabled:true, ch:"200", chname:"Rel. Humidity"},
+        {enabled:true, ch:"300", chname:"Air Pressure"},
+        {enabled:true, ch:"400", chname:"Wind Speed"},
+        {enabled:true, ch:"405", chname:"Wind Speed"},
+        {enabled:true, ch:"500", chname:"Wind Direction"},
+        {enabled:true, ch:"600", chname:"Precipiation amount"},
+        {enabled:true, ch:"601", chname:"Precipiation amount daily"},
+        {enabled:true, ch:"700", chname:"Precipiation tpe"},
+        {enabled:true, ch:"900", chname:"Global Radiation"},
+        {enabled:true, ch:"903", chname:"Illumination"},
+        {enabled:true, ch:"904", chname:"Dawn"},
+        {enabled:true, ch:"910", chname:"Sun Direction Azimut"},
+        {enabled:true, ch:"911", chname:"Sun Direction Elevation"},
+    ]},
+};
+
 
 module.exports = function(RED) {
     function UMBMasterNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
 
-        node.status({fill:"red",shape:"ring",text:"disconnected"});
-
         this.cfg_channels = RED.nodes.getNode(config.channels);
-
-        let umbgen = new mod_umbparser.UMBGenerator(this);
-
-        this.address = parseInt(config.address, 16);
-        
         if(this.cfg_channels)
         {
             this.channels = [];
@@ -31,72 +48,39 @@ module.exports = function(RED) {
             });
         }
 
-        const net = require('net');
-        var client = undefined;
-        let umbparser = new mod_umbparser.UMBParser(this);
+        var dev_address = parseInt(config.dev_address, 16);
+        var ip_address = config.ip_address;
+        var ip_port = config.ip_port;
+
+        let umbgen = new mod_umbparser.UMBGenerator(this);
+        var umbhandler = new mod_umbhandler.UMBHandler(this, dev_address, ip_port, ip_address);
         
         node.on('input', function(msg) {
             let retmsg = new Object;
-            let resp_pending = true;
 
-            //let umbreq = umbgen.createMultiChReq(this.address, this.channels);
-            let umbreq = umbgen.createChNumReq(this.address);
+            let umbreq = umbgen.createMultiChReq(this.address, this.channels);
+            //let umbreq = umbgen.createChDetailsReq(this.address, 100);
+            
+            umbhandler.transfer(umbreq, function(statusMsg, parsedFrame) {
+                let retmsg = new Object;
 
-            if(client == undefined || client.destroyed) {
-                client = new net.Socket();
-                client.setNoDelay(true);
-                client.on('error', function(ex) {
-                    node.log("handled error");
-                    node.log(ex);
-                });
-                client.on('close', function() {
-                    node.log('closed');
-                    node.status({fill:"red",shape:"ring",text:"disconnected"});
-                })
-                client.on('data', function(data) {
-                    let retmsg = new Object;
-        
-                    node.log('Received ' + data.length + 'bytes');
-                    
-                    node.log("Valid input buffer detected");
-                    let parsedFrame = umbparser.ParseReadBuf(data);
-        
-                    node.log("Parsing status:")
-                    node.log("parser status: " + parsedFrame.parserState);
-                    if(parsedFrame.parserState == "finished")
-                    {
-                        node.log("Frametype: " + parsedFrame.umbframe.type);
-                        node.log("Framestatus: " + parsedFrame.umbframe.status);
-                        node.log("Framecmd: " + parsedFrame.umbframe.cmd);
-                        retmsg.payload = parsedFrame;
-                        node.send(retmsg);
-                        resp_pending = false;
-                    }
-                    else if(parsedFrame.parserState == "processing")
-                    {
-                        node.log("processing...");
-                    }
-                });
-                client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG, function() {
-                    node.log('timeout');
-                    if(resp_pending) {
-                        node.log('Data timeout');
-                        client.destroy();
-                        let retmsg = new Object;
-                        retmsg.payload = "Response timeout";
-                        node.send(retmsg);
-                    }
-                });
-                client.connect(config.ip_port, config.ip_address, function() {
-                    node.log('Connected');
-                    node.status({fill:"green",shape:"dot",text:"connected"});
-                    client.write(umbreq);
-                });
-            }
-            else {
-                client.write(umbreq);
-            }
+                if(parsedFrame == undefined)
+                {
+                    retmsg.payload = statusMsg;
+                }
+                else
+                {
+                    retmsg.payload = parsedFrame;
+                }
+                node.send(retmsg);
+            });
         });
     }
     RED.nodes.registerType("umbmaster", UMBMasterNode);
+
+    RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {
+        res.json(umb_channels);
+
+        //let umbreq = umbgen.createMultiChReq(this.address, this.channels);
+    });
 }
