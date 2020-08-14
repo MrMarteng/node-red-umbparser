@@ -235,7 +235,7 @@ class UMBParser
     constructor(node) 
     {
         this.node = node;
-        this.readBuffer = [];
+        this.readBuffer = new Array();
         this.parsingIdx = 0;
         this.parsingSOHIdx = 0;
         this.parsingETXIdx = 0;
@@ -259,9 +259,16 @@ class UMBParser
     /**
      * This function resets the internal parserr state
      */
-    resetParser() 
+    resetParser(empty = false) 
     {
-        this.readBuffer.slice(this.parsingSOHIdx);
+        if(empty) 
+        {
+            this.readBuffer = new Array();
+        }
+        else
+        {
+            this.readBuffer = this.readBuffer.slice(this.parsingSOHIdx);
+        }
         this.parsingSOHIdx = 0;
         this.parsingIdx = 0;
         this.payloadCnt = 0;
@@ -450,7 +457,7 @@ class UMBParser
             parsedFrame.FromAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR];
             parsedFrame.ToAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR];
             parsedFrame.cmd = this.readBuffer[umb_consts.UMBFRAME_IDX.CMD];
-            parsedFrame.payload = this.payload;
+            parsedFrame.payload = Object.assign({}, this.payload);;
             parsedFrame.crc = this.calcCRC(this.readBuffer.slice(0, this.parsingETXIdx));
             if(((parsedFrame.FromAddr & 0xF000) == 0xF000) && ((parsedFrame.ToAddr & 0xF000) != 0xF000))
             {
@@ -480,7 +487,7 @@ class UMBParser
                 }
             }
 
-            this.resetParser();
+            this.resetParser(true);
         }
         
         let retval = {
@@ -709,7 +716,6 @@ class UMBGenerator
         this.readBuffer[newFrameLength - 3] = crc & 0xFF;
 
         this.readBuffer[newFrameLength - 1] = umb_consts.UMBFRAME_VAL.EOT;
-
     }
 
     /**

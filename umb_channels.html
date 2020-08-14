@@ -45,7 +45,7 @@
         
             $("#node-config-lookup-channels").click(function() {
                 $("#node-config-lookup-channels").addClass('disabled');
-                $.getJSON('umbchannels',function(chlist) {
+                $.getJSON('umbchannels', function(chlist) {
                     $("#node-config-lookup-channels").removeClass('disabled');
                     $("#node-config-input-channellist").editableList("empty");
                     $.each(chlist.channels.value, function(i, channel) {
