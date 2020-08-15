@@ -51,21 +51,11 @@ module.exports = function(RED) {
         let umbhandler = new mod_umbhandler.UMBHandler(this, dev_address, ip_port, ip_address);
 
         node.on('input', function(msg) {
-            //let umbreq = umbgen.createMultiChReq(dev_address, this.channels);
-            let umbreq = umbgen.createChListReq(dev_address, 0)
-            //let umbreq = umbgen.createChDetailsReq(this.address, 100);
+            let umbreq = umbgen.createMultiChReq(dev_address, this.channels);
             
-            umbhandler.transfer(umbreq, function(statusMsg, parsedFrame) {
+            umbhandler.syncTransfer(umbreq).then((response) => {
                 let retmsg = new Object;
-
-                if(parsedFrame == undefined)
-                {
-                    retmsg.payload = statusMsg;
-                }
-                else
-                {
-                    retmsg.payload = parsedFrame;
-                }
+                retmsg.payload = response;
                 node.send(retmsg);
             });
         });
