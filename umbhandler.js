@@ -54,7 +54,6 @@ class UMBHandler
         this.resp_pending = true;
 
         let e = new EventEmitter();
-
         let dataTimer = undefined;
 
         this.client = new net.Socket();
@@ -90,8 +89,6 @@ class UMBHandler
             }
         });
         this.client.connect(this.ip_port, this.ip_address, () => {
-            //this.client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG, () => this.cb_socketTimeout());
-
             this.node.log("TX: " + umbreq.length);
 
             dataTimer = setTimeout(() => {
@@ -101,7 +98,6 @@ class UMBHandler
     
             this.client.write(umbreq);
         });
-
                 
         let retval = await new Promise((resolve, reject) => {
             e.on('finished', (retval) => {
@@ -112,9 +108,8 @@ class UMBHandler
                 resolve(retval);
             })
         });
-        
-        return retval;
 
+        return retval;
     }
 
     transfer(umbreq, cb_result)
