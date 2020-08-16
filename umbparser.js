@@ -631,9 +631,9 @@ class UMBParser
         let chDetailsDV1 = new DataView(this.payload.buffer, payloadOffset, 2+20+15+1+1);
         chDetailsRaw.channel = chDetailsDV1.getUint16(byteIdx, true); 
         byteIdx += 2;
-        chDetailsRaw.name = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+20));
+        chDetailsRaw.name = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+20));
         byteIdx += 20;
-        chDetailsRaw.unit = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+15));
+        chDetailsRaw.unit = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+15));
         byteIdx += 15;
         chDetailsRaw.ch_type = chDetailsDV1.getUint8(byteIdx, true);
         byteIdx++;
