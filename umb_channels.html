@@ -45,13 +45,31 @@
         
             $("#node-config-lookup-channels").click(function() {
                 $("#node-config-lookup-channels").addClass('disabled');
-                $.getJSON('umbchannels',function(chlist) {
+                $("#node-config-input-channellist").editableList("empty");
+                $.getJSON('umbchannels', function(chlist) {
                     $("#node-config-lookup-channels").removeClass('disabled');
-                    $("#node-config-input-channellist").editableList("empty");
-                    $.each(chlist.channels.value, function(i, channel) {
-                        $("#node-config-input-channellist").editableList('addItem', channel);
-                    });
-                    $("#node-config-input-name").val(chlist.name.value);
+                    if(chlist.error == undefined) {
+                        $("#node-config-input-channellist").editableList("empty");
+                        $.each(chlist.channels.value, function(i, channel) {
+                            $("#node-config-input-channellist").editableList('addItem', channel);
+                        });
+                        $("#node-config-input-name").val(chlist.name.value);
+                    }
+                    else {
+                        var myNotification = RED.notify(chlist.error, {
+                            modal: true,
+                            fixed: true,
+                            type: 'error',
+                            buttons: [
+                                {
+                                    text: "ok",
+                                    click: function(e) {
+                                        myNotification.close();
+                                    }
+                                },
+                            ]
+                        })
+                    }
                 });
             });
         },

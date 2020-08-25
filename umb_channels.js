@@ -24,7 +24,7 @@ var umb_channels = {
         {enabled:true, ch:"904", chname:"Dawn"},
         {enabled:true, ch:"910", chname:"Sun Direction Azimut"},
         {enabled:true, ch:"911", chname:"Sun Direction Elevation"},
-        ]},
+    ]},
 };
 
 module.exports = function(RED) {
@@ -34,8 +34,4 @@ module.exports = function(RED) {
         var node = this;
     }
     RED.nodes.registerType("umbchannels", UMBChannels);
-
-    RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {
-        res.json(umb_channels);
-    });
 }

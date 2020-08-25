@@ -126,12 +126,101 @@ class MeasChVal
      * @param {String} data_type Data type
      * @param {int} status Channel status
      */
-    constructor(number, value, data_type, status) 
+    constructor(number, data_type, status, dview) 
     {
         this.ch_number = number;      // Kanalnummer
-        this.ch_value = value;       // aktueller Wert des Kanals
-        this.ch_data_type = data_type;   // Datentype
-        this.ch_status = status;      // UMB-Status        
+        this.ch_data_type = MeasChVal.getDataTypeName(data_type);   // Datentype
+        this.ch_status = status;      // UMB-Status   
+        this.ch_value = NaN;
+
+        switch(data_type)
+        {
+            case 0x10:
+                this.ch_value = dview.getUint8(0);
+                break;
+            case 0x11:
+                this.ch_value = dview.getInt8(0);
+                break;
+            case 0x12:
+                this.ch_value = dview.getUint16(0, true);
+                break;
+            case 0x13:
+                this.ch_value = dview.getInt16(0, true);
+                break;
+            case 0x14:
+                this.ch_value = dview.getUint32(0, true);
+                break;
+            case 0x15:
+                this.ch_value = dview.getInt32(0, true);
+                break;
+            case 0x16:
+                this.ch_value = dview.getFloat32(0, true);
+                break;
+            case 0x17:
+                this.ch_value = dview.getFloat64(0, true);
+                break;
+        }
+
+    }
+
+    static getDataTypeName(dtype)
+    {
+        let ch_data_type = "UNKOWN";
+        switch(dtype)
+        {
+            case 0x10:
+                ch_data_type = "UCHAR";
+                break;
+            case 0x11:
+                ch_data_type = "SCHAR";
+                break;
+            case 0x12:
+                ch_data_type = "USHORT";
+                break;
+            case 0x13:
+                ch_data_type = "SSHORT";
+                break;
+            case 0x14:
+                ch_data_type = "ULONG";
+                break;
+            case 0x15:
+                ch_data_type = "SLONG";
+                break;
+            case 0x16:
+                ch_data_type = "FLOAT";
+                break;
+            case 0x17:
+                ch_data_type = "DOUBLE";
+                break;
+        }
+        return ch_data_type;
+    }               
+
+    static getMeasTypeName(chtype)
+    {
+        let meas_name = "UNKOWN";
+        switch(chtype)
+        {
+            case 0x10:
+                meas_name = "Current";
+                break;
+            case 0x11:
+                meas_name = "Minimum";
+                break;
+            case 0x12:
+                meas_name = "Maximum";
+                break;
+            case 0x13:
+                meas_name = "Average";
+                break;
+            case 0x14:
+                meas_name = "Sum";
+                break;
+            case 0x15:
+                meas_name = "Vector";
+                break;
+        }
+        return meas_name;
     }
 }
 
@@ -146,7 +235,7 @@ class UMBParser
     constructor(node) 
     {
         this.node = node;
-        this.readBuffer = [];
+        this.readBuffer = new Array();
         this.parsingIdx = 0;
         this.parsingSOHIdx = 0;
         this.parsingETXIdx = 0;
@@ -170,9 +259,16 @@ class UMBParser
     /**
      * This function resets the internal parserr state
      */
-    resetParser() 
+    resetParser(empty = false) 
     {
-        this.readBuffer.slice(this.parsingSOHIdx);
+        if(empty) 
+        {
+            this.readBuffer = new Array();
+        }
+        else
+        {
+            this.readBuffer = this.readBuffer.slice(this.parsingSOHIdx);
+        }
         this.parsingSOHIdx = 0;
         this.parsingIdx = 0;
         this.payloadCnt = 0;
@@ -361,7 +457,7 @@ class UMBParser
             parsedFrame.FromAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.FROM_ADDR];
             parsedFrame.ToAddr = (this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR+1] << 8) | this.readBuffer[umb_consts.UMBFRAME_IDX.TO_ADDR];
             parsedFrame.cmd = this.readBuffer[umb_consts.UMBFRAME_IDX.CMD];
-            parsedFrame.payload = this.payload;
+            parsedFrame.payload = Object.assign({}, this.payload);;
             parsedFrame.crc = this.calcCRC(this.readBuffer.slice(0, this.parsingETXIdx));
             if(((parsedFrame.FromAddr & 0xF000) == 0xF000) && ((parsedFrame.ToAddr & 0xF000) != 0xF000))
             {
@@ -385,10 +481,13 @@ class UMBParser
                     case umb_consts.UMB_CMD.GETMULTICHANNEL:
                         parsedFrame.framedata = this.cmdRespChData();
                         break;
+                    case umb_consts.UMB_CMD.GETDEVINFO:
+                        parsedFrame.framedata = this.cmdRespDevinfo();
+                        break;
                 }
             }
 
-            this.resetParser();
+            this.resetParser(true);
         }
         
         let retval = {
@@ -400,7 +499,7 @@ class UMBParser
     }
     
     /**
-     * Interal function to analyse response data in more detail
+     * Interal function to analyse channel query response data in more detail
      * It does not need any paramter and uses the last internally 
      * parse frame data.
      * This function will return a UMBFrameData() object with
@@ -417,53 +516,17 @@ class UMBParser
             let curDataLen = this.payload[index];
             let curDataView = new DataView(this.payload.buffer, index+1, curDataLen);
             let ch_status = curDataView.getUint8(0);
-            let ch_number = curDataView.getUint16(1, true);
-            let ch_data_type = "UNKNOWN";
-            let ch_value = 0;
 
             if(ch_status == umb_consts.ERROR_STATUS.STATUS_OK)
             {
-                ch_data_type = curDataView.getUint8(3);
+                let ch_number = curDataView.getUint16(1, true);
+                let ch_data_type = curDataView.getUint8(3);
 
-                switch(ch_data_type)
-                {
-                    case 0x10:
-                        ch_data_type = "UCHAR";
-                        ch_value = curDataView.getUint8(4);
-                        break;
-                    case 0x11:
-                        ch_data_type = "SCHAR";
-                        ch_value = curDataView.getInt8(4);
-                        break;
-                    case 0x12:
-                        ch_data_type = "USHORT";
-                        ch_value = curDataView.getUint16(4, true);
-                        break;
-                    case 0x13:
-                        ch_data_type = "SSHORT";
-                        ch_value = curDataView.getInt16(4, true);
-                        break;
-                    case 0x14:
-                        ch_data_type = "ULONG";
-                        ch_value = curDataView.getUint32(4, true);
-                        break;
-                    case 0x15:
-                        ch_data_type = "SLONG";
-                        ch_value = curDataView.getInt32(4, true);
-                        break;
-                    case 0x16:
-                        ch_data_type = "FLOAT";
-                        ch_value = curDataView.getFloat32(4, true);
-                        break;
-                    case 0x17:
-                        ch_data_type = "DOUBLE";
-                        ch_value = curDataView.getFloat64(4, true);
-                        break;
-                }
+                let curMeasChVal = new MeasChVal(ch_number, ch_data_type, ch_status, new DataView(this.payload.buffer, index+5))
+            
+                chData.push(curMeasChVal);
             }
             
-            chData.push(new MeasChVal(ch_number, ch_value, ch_data_type, ch_status));
-
             index += curDataLen+1;
         }
 
@@ -479,6 +542,109 @@ class UMBParser
         });
 
         let parsedData = new UMBFrameData("Multi channel data", chData, measValues);
+        return parsedData;
+    }
+
+    /**
+     * Interal function to analyse device info sub-commands
+     */
+    cmdRespDevinfo()
+    {
+        switch(this.payload[1])
+        {
+            case 0x15:
+                return this.cmdRespDevinfo_ChNum();
+                break;
+            case 0x16:
+                return this.cmdRespDevinfo_ChList();
+                break;
+            case 0x30:
+                return this.cmdRespDevinfo_ChDetails();
+                break;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChNum()
+    {
+        let chData = new Array();
+
+        let numChannelsView = new DataView(this.payload.buffer, 2, 2);
+        let numChannels = numChannelsView.getUint16(0, true);
+        let numBlocks = this.payload[4];
+
+        let devInfoNumCh = new Object();
+        devInfoNumCh.numChannels = numChannels;
+        devInfoNumCh.numBlocks = numBlocks;
+
+        let parsedData = new UMBFrameData("Number of Channels", devInfoNumCh, devInfoNumCh);
+        return parsedData;
+    }
+
+    /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChList()
+    {
+        let chList = new Array();
+
+        let index = 4;
+        let block = this.payload[2];
+        let numChannels = this.payload[3];
+
+        for(let i=0; i<numChannels; i++)
+        {
+            let curhannelView = new DataView(this.payload.buffer, index, 2);
+            let curChannel = curhannelView.getUint16(0, true);
+
+            index += 2;
+            
+            chList.push(curChannel);
+        }
+
+        let  chListData = new Object();
+        chListData.block = block;
+        chListData.channels = chList;
+
+        let parsedData = new UMBFrameData("Channel list", chListData, chListData);
+        return parsedData;
+    }
+
+     /**
+     * Interal function to analyse device info sub-command to query
+     * number of channels
+     */
+    cmdRespDevinfo_ChDetails()
+    {
+        let chDetailsRaw = new Object();
+
+        let byteIdx = 0;
+        const payloadOffset = 2;
+
+        // <channel>2 <messgröße>20, <einheit>15, <mw_typ>, <date_typ>, <min>, <max>
+        let chDetailsDV1 = new DataView(this.payload.buffer, payloadOffset, 2+20+15+1+1);
+        chDetailsRaw.channel = chDetailsDV1.getUint16(byteIdx, true); 
+        byteIdx += 2;
+        chDetailsRaw.name = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+20));
+        byteIdx += 20;
+        chDetailsRaw.unit = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+15));
+        byteIdx += 15;
+        chDetailsRaw.ch_type = chDetailsDV1.getUint8(byteIdx, true);
+        byteIdx++;
+        chDetailsRaw.data_type = chDetailsDV1.getUint8(byteIdx, true);
+        byteIdx++;
+
+        let chDetails = Object.assign({}, chDetailsRaw);
+        chDetails.ch_type = MeasChVal.getMeasTypeName(chDetailsRaw.ch_type);
+        chDetails.data_type = MeasChVal.getDataTypeName(chDetailsRaw.data_type);
+
+        let parsedData = new UMBFrameData("Channel Details", chDetailsRaw, chDetails);
         return parsedData;
     }
 
@@ -550,7 +716,6 @@ class UMBGenerator
         this.readBuffer[newFrameLength - 3] = crc & 0xFF;
 
         this.readBuffer[newFrameLength - 1] = umb_consts.UMBFRAME_VAL.EOT;
-
     }
 
     /**
@@ -628,6 +793,50 @@ class UMBGenerator
         this.genFrameCRCEnd(payloadLength);
 
         return Buffer.from(this.readBuffer);
+    }
+
+    /**
+     * This method generates a device info request
+     * 
+     * @param {number} to_addr Desination addess for the gernerated UMB request
+     * @param {uint8} subcmd subcommand
+     * @param {array} parm parameter
+     */
+    createDevInfoReq(to_addr, subcmd, option=undefined) 
+    {
+        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
+        let payloadLength = 0;
+
+        this.readBuffer[payloadIndex++] = subcmd;
+        payloadLength++;
+
+        if((option != undefined) && (Array.isArray(option))) {
+            option.forEach(element => {
+                this.readBuffer[payloadIndex] = element;
+                payloadLength++;
+                payloadIndex++
+            });
+        }
+        
+        this.genFrameCRCEnd(payloadLength);
+
+        return Buffer.from(this.readBuffer);
+    }
+
+    createChNumReq(to_addr)
+    {
+        return this.createDevInfoReq(to_addr, 0x15)
+    }
+
+    createChListReq(to_addr, block)
+    {
+        return this.createDevInfoReq(to_addr, 0x16, [block])
+    }
+
+    createChDetailsReq(to_addr, channel)
+    {
+        return this.createDevInfoReq(to_addr, 0x30, [channel&0xFF, (channel&0xFF00)>>8])
     }
 }
 

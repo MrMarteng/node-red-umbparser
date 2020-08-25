@@ -6,22 +6,38 @@
  * @summary Node-Red UMB parser
  * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
  */
+let mod_umbhandler = require('./umbhandler');
 let mod_umbparser = require('./umbparser');
+
+const { parse, resolve } = require('path');
+const { promises } = require('fs');
+const { memory } = require('console');
 const umb_consts = require('./umb_consts').umb_consts;
+
+var node = undefined;
+var dev_address = 0;
+var ip_address = 0
+var ip_port = 0;
+
+var umb_channels = {
+    name: {value: "WS10"},
+    channels: {value: [
+        {enabled:true, ch:"100", chname:"Temperature"},
+    ]},
+    status: ""
+};
 
 module.exports = function(RED) {
     function UMBMasterNode(config) {
         RED.nodes.createNode(this, config);
-        var node = this;
 
-        node.status({fill:"red",shape:"ring",text:"disconnected"});
+        // BUG: NRU-15 - Communication only working with to-address 0
+        //dev_address = parseInt(config.dev_address, 16);
+        ip_address = config.ip_address;
+        ip_port = config.ip_port;
+        node = this;
 
         this.cfg_channels = RED.nodes.getNode(config.channels);
-
-        let umbgen = new mod_umbparser.UMBGenerator(this);
-
-        this.address = parseInt(config.address, 16);
-        
         if(this.cfg_channels)
         {
             this.channels = [];
@@ -30,72 +46,107 @@ module.exports = function(RED) {
                     this.channels.push(element.ch);
             });
         }
-
-        const net = require('net');
-        var client = undefined;
-        let umbparser = new mod_umbparser.UMBParser(this);
         
+        let umbgen = new mod_umbparser.UMBGenerator(this);
+        let umbhandler = new mod_umbhandler.UMBHandler(this, dev_address, ip_port, ip_address);
+
         node.on('input', function(msg) {
-            let retmsg = new Object;
-            let resp_pending = true;
-
-            let umbreq = umbgen.createMultiChReq(this.address, this.channels);
+            let umbreq = umbgen.createMultiChReq(dev_address, this.channels);
             
-            if(client == undefined || client.destroyed) {
-                client = new net.Socket();
-                client.setNoDelay(true);
-                client.on('error', function(ex) {
-                    node.log("handled error");
-                    node.log(ex);
-                });
-                client.on('close', function() {
-                    node.log('closed');
-                    node.status({fill:"red",shape:"ring",text:"disconnected"});
-                })
-                client.on('data', function(data) {
-                    let retmsg = new Object;
-        
-                    node.log('Received ' + data.length + 'bytes');
-                    
-                    node.log("Valid input buffer detected");
-                    let parsedFrame = umbparser.ParseReadBuf(data);
-        
-                    node.log("Parsing status:")
-                    node.log("parser status: " + parsedFrame.parserState);
-                    if(parsedFrame.parserState == "finished")
-                    {
-                        node.log("Frametype: " + parsedFrame.umbframe.type);
-                        node.log("Framestatus: " + parsedFrame.umbframe.status);
-                        node.log("Framecmd: " + parsedFrame.umbframe.cmd);
-                        retmsg.payload = parsedFrame;
-                        node.send(retmsg);
-                        resp_pending = false;
-                    }
-                    else if(parsedFrame.parserState == "processing")
-                    {
-                        node.log("processing...");
-                    }
-                });
-                client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG, function() {
-                    node.log('timeout');
-                    if(resp_pending) {
-                        node.log('Data timeout');
-                        client.destroy();
-                        let retmsg = new Object;
-                        retmsg.payload = "Response timeout";
-                        node.send(retmsg);
-                    }
-                });
-                client.connect(config.ip_port, config.ip_address, function() {
-                    node.log('Connected');
-                    node.status({fill:"green",shape:"dot",text:"connected"});
-                    client.write(umbreq);
-                });
-            }
-            else {
-                client.write(umbreq);
-            }
+            umbhandler.syncTransfer(umbreq).then((response) => {
+                let retmsg = new Object;
+                retmsg.payload = response;
+                node.send(retmsg);
+            });
         });
     }
     RED.nodes.registerType("umbmaster", UMBMasterNode);
+
+    // Register internal URL to query channel list (used by channel_list config node)
+    RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {
+        let umbgen = new mod_umbparser.UMBGenerator(node);
+        let umbhandler = new mod_umbhandler.UMBHandler(node, dev_address, ip_port, ip_address);
+
+        /* 1. query number of blocks and channels */
+        new Promise((resolve, reject) => {
+            let umbreq = umbgen.createChNumReq(dev_address);
+            umbhandler.syncTransfer(umbreq).then((response) => {
+                if(response.umbframe == undefined)
+                {
+                    node.log("Error: " + response);
+                    reject("Error: " + response);
+                }
+                else
+                {
+                    numChannels = response.umbframe.framedata.parsed.numChannels;
+                    node.log("channels detected: " + numChannels);
+                    resolve(numChannels);
+                }
+            });
+        })
+        /* 2. Query channel list */
+        .then((parm) => {
+            return new Promise((resolve, reject) => {
+                let umbreq = umbgen.createChListReq(dev_address, 0);
+                umbhandler.syncTransfer(umbreq).then((response) => {
+                    if(response.umbframe == undefined)
+                    {
+                        node.log("Error: " + response);
+                        reject("Error: " + response);
+                    }
+                    else
+                    {
+                        node.log("Channellist read");
+                        channelList = response.umbframe.framedata.parsed.channels;
+                        resolve(channelList);
+                    }
+                });
+            })
+        })
+        /* 3. Query channel details */
+        .then((channelList) => {
+            return new Promise((resolve, reject) => {
+
+                let channelCfg = new Array();
+
+                (async () => {
+                    await channelList.reduce(async (memo, curChannel) => {
+                        await memo;
+                        let umbreq = umbgen.createChDetailsReq(dev_address, curChannel);
+                        await umbhandler.syncTransfer(umbreq).then((response) => {
+                            if(response.umbframe == undefined)
+                            {
+                                node.log("Error: " + response);
+                                reject("Error: " + response);
+                                return response;
+                            }
+                            else
+                            {
+                                node.log("CurChannel: " + curChannel);
+                                curChDetails = new Object();
+                                curChDetails.enabled = true;
+                                curChDetails.ch = curChannel;
+                                curChDetails.chname = response.umbframe.framedata.parsed.name;
+                                curChDetails.chunit = response.umbframe.framedata.parsed.unit;
+                                channelCfg.push(curChDetails);
+                            }
+                        });
+                    }, undefined);
+                    channelCfg;
+                    resolve(channelCfg);
+                })();
+            });
+        })
+        .then((channelCfg) => {
+            umb_channels.channels.value = channelCfg;
+            res.json(umb_channels);
+        })
+        .catch((error) => {
+            node.log("Error: = " + error);
+            umb_channels.error = error;
+            res.json(umb_channels);
+        });
+
+    });
+    
 }
