@@ -2,7 +2,7 @@
   "name": "node-red-umbparser",
   "version": "0.0.3",
   "description": "",
-  "main": "umbparser_node.js",
+  "main": "umbmaster_node.js",
   "scripts": {
     "test": "mocha"
   },
@@ -10,7 +10,8 @@
   "license": "ISC",
   "node-red": {
     "nodes": {
-      "lower-case": "umbparser_node.js"
+      "umbparser": "umbmaster_node.js",
+      "umbchannels": "umb_channels.js"
     }
   },
   "dependencies": {

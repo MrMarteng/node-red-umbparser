@@ -1,0 +1,120 @@
+<script type="text/javascript">
+    RED.nodes.registerType('umbchannels',{
+        category: 'config',
+        color: '#a6bbcf',
+        defaults: {
+            name: {value: ""},
+            channels: {value: [
+                {enabled:false, ch:"", chname:""}]},
+        },
+        icon: "file.png",
+        label: function() {
+            if(this.name != undefined)
+            {
+                return this.name;
+            }
+        },
+        oneditprepare: function () {
+            var node = this;
+            console.log("config window openend: " + node.channels);
+            $("#node-config-input-channellist").css('min-height','650px').css('min-width','450px').editableList({
+                addItem: function(container, i, channel) {
+                    var row = $('<div/>').appendTo(container);
+                    var chena = $('<input/>',{id:"node-config-input-ch-ena-"+i,type:"checkbox", style:"margin:3px; width:10px;vertical-align:middle"}).appendTo(row);
+                    $('<label/>',{for:"node-config-input-ch-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Channel").appendTo(row);
+                    var ch = $('<input/>',{id:"node-config-input-ch-"+i,type:"text", style:"width:60px; vertical-align:middle"}).appendTo(row);
+                    $('<label/>',{for:"node-config-input-chname-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Name").appendTo(row);
+                    var chname = $('<input/>',{id:"node-config-input-chname-"+i, type:"text", style:"width:auto; vertical-align:middle"}).appendTo(row);
+                    ch.val(channel.ch);
+                    chname.val(channel.chname);
+                    chena.prop("checked", channel.enabled);
+                },
+                removeItem: function(opt) {
+                },
+                sortItems: function(rules) {
+                },
+                sortable: false,
+                removable: true
+            });
+            
+            console.log("channel-list: " + JSON.stringify(node.channels));
+            for (var i=0;i<this.channels.length;i++) {
+                var channel = this.channels[i];
+                $("#node-config-input-channellist").editableList('addItem', channel);
+            }
+        
+            $("#node-config-lookup-channels").click(function() {
+                $("#node-config-lookup-channels").addClass('disabled');
+                $("#node-config-input-channellist").editableList("empty");
+                $.getJSON('umbchannels', function(chlist) {
+                    $("#node-config-lookup-channels").removeClass('disabled');
+                    if(chlist.error == undefined) {
+                        $("#node-config-input-channellist").editableList("empty");
+                        $.each(chlist.channels.value, function(i, channel) {
+                            $("#node-config-input-channellist").editableList('addItem', channel);
+                        });
+                        $("#node-config-input-name").val(chlist.name.value);
+                    }
+                    else {
+                        var myNotification = RED.notify(chlist.error, {
+                            modal: true,
+                            fixed: true,
+                            type: 'error',
+                            buttons: [
+                                {
+                                    text: "ok",
+                                    click: function(e) {
+                                        myNotification.close();
+                                    }
+                                },
+                            ]
+                        })
+                    }
+                });
+            });
+        },
+        oneditsave: function() {
+            var channels = $("#node-config-input-channellist").editableList('items');
+            var node = this;
+            var chArray = [];
+            channels.each(function(i) {
+                var deviceElement = $(this);
+                var chena = deviceElement.find("#node-config-input-ch-ena-"+i).prop("checked");
+                var ch = deviceElement.find("#node-config-input-ch-"+i).val();
+                var chname = deviceElement.find("#node-config-input-chname-"+i).val();
+                console.log(ch, chname);
+                var d = {};
+                d['enabled']= chena;
+                d['ch']=ch;
+                d['chname']=chname;
+                console.log(d);
+                chArray.push(d);
+            });
+            node.channels = chArray;
+            console.log("channel-list: " + JSON.stringify(node.channels));
+        },
+    });
+</script>
+
+<script type="text/html" data-template-name="umbchannels" >
+    <body>
+    <div class="form-row">
+        <a id="node-config-lookup-channels" class="red-ui-button"
+            ><i class="fa fa-download"></i>
+        </a>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
+        <input type="text" id="node-config-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-channellist"><i class="icon-tag"></i> Channels</label>
+        <div id="node-config-input-channellist">
+        </div>
+    </div>
+    </body>
+</script>
+
+<script type="text/html" data-help-name="umbgenerator">
+    <p>This is a generator for UMB frames</p>
+</script>
