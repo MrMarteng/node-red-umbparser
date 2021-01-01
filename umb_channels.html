@@ -17,6 +17,7 @@
         oneditprepare: function () {
             var node = this;
             console.log("config window openend: " + node.channels);
+            $("#channellist-loader").hide();
             $("#node-config-input-channellist").css('min-height','650px').css('min-width','450px').editableList({
                 addItem: function(container, i, channel) {
                     var row = $('<div/>').appendTo(container);
@@ -46,8 +47,10 @@
             $("#node-config-lookup-channels").click(function() {
                 $("#node-config-lookup-channels").addClass('disabled');
                 $("#node-config-input-channellist").editableList("empty");
+                $("#channellist-loader").show();
                 $.getJSON('umbchannels', function(chlist) {
                     $("#node-config-lookup-channels").removeClass('disabled');
+                    $("#channellist-loader").hide();
                     if(chlist.error == undefined) {
                         $("#node-config-input-channellist").editableList("empty");
                         $.each(chlist.channels.value, function(i, channel) {
@@ -96,19 +99,43 @@
     });
 </script>
 
+<style type="text/css">
+    .loader {
+        border: 16px solid #f3f3f3;
+        border-top: 16px solid #3498db;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 2s linear infinite;
+        position:absolute;
+        margin-left: auto;
+        margin-right: auto;
+        top: 100px;
+        left: 0;
+        right: 0;
+        text-align: center;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
 <script type="text/html" data-template-name="umbchannels" >
     <body>
     <div class="form-row">
-        <a id="node-config-lookup-channels" class="red-ui-button"
-            ><i class="fa fa-download"></i>
+        <a id="node-config-lookup-channels" class="red-ui-button">
+            <i class="fa fa-download"></i>
         </a>
     </div>
     <div class="form-row">
         <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
         <input type="text" id="node-config-input-name">
     </div>
-    <div class="form-row">
+    <div class="form-row" style="position: relative;">
         <label for="node-config-input-channellist"><i class="icon-tag"></i> Channels</label>
+        <div id="channellist-loader" class="loader"></div>
         <div id="node-config-input-channellist">
         </div>
     </div>
