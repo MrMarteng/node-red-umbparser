@@ -1,3 +1,12 @@
+/**
+ * Copyright (c) 2020
+ *
+ * UMB handler class
+ *
+ * @summary UMB handler class
+ * @author Martin Kiepfer <martin.kiepfer@otthydromet.com>
+ */
+
 const net = require('net');
 let mod_umbparser = require('./umbparser');
 const { throws } = require('assert');
