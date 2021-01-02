@@ -16,58 +16,33 @@ const umb_consts = require('./umb_consts').umb_consts;
 
 class UMBSocket extends net.Socket
 {
-    constructor(ip_address, ip_port)
+    constructor(node, emitter)
     {
         super();
 
-        
-    }
-}
-
-class UMBHandler
-{
-    /**
-     * 
-     * @param {node} node 
-     * @param {int} address 
-     * @param {string} ip_port 
-     * @param {int} ip_address 
-     */
-    constructor(node, address, ip_port, ip_address)
-    {
-        var self = this;
-
+        this.emitter = emitter;
         this.node = node;
-        this.address = address;
-        this.ip_port = ip_port;
-        this.ip_address = ip_address;
-        this.client = undefined;
+        this.socket_status = "created";
         this.umbparser = new mod_umbparser.UMBParser(this.node);
 
-        this.emitter = new EventEmitter();
-
-        this.socket_status = "undefined";
-        this.cb_result = undefined;
-
-        this.client = new net.Socket();
-        this.client.setNoDelay(true);
-        this.client.on('error', (ex) => {
+        this.setNoDelay(true);
+        this.on('error', (ex) => {
             this.node.log("Socket error");
             this.node.log(ex);
             this.emitter.emit('finished', 'Socket error');
             this.socket_status = "error";
         });
-        this.client.on('close', (hadError) => {
+        this.on('close', (hadError) => {
             this.node.log("Soecet closed (Status: " + hadError + ")");
             this.node.status({fill:"red",shape:"ring",text:"disconnected"});
             this.socket_status = "closed";
         });
-        this.client.on('connect', () => {
+        this.on('connect', () => {
             this.node.log("Socket connected");
             this.node.status({fill:"green",shape:"ring",text:"connected"});
             this.socket_status = "connected";
         })
-        this.client.on('data', (data) => {
+        this.on('data', (data) => {
             this.node.log('Socket RX: ' + data.length + 'bytes');
             
             this.node.log("Valid input buffer detected");
@@ -90,6 +65,32 @@ class UMBHandler
 
         this.node.status({fill:"red",shape:"ring",text:"disconnected"});
     }
+}
+
+class UMBHandler
+{
+    /**
+     * 
+     * @param {node} node 
+     * @param {int} address 
+     * @param {string} ip_port 
+     * @param {int} ip_address 
+     */
+    constructor(node, address, ip_port, ip_address)
+    {
+        var self = this;
+
+        this.node = node;
+        this.address = address;
+        this.ip_port = ip_port;
+        this.ip_address = ip_address;
+
+        this.emitter = new EventEmitter();
+        
+        this.cb_result = undefined;
+
+        this.client = new UMBSocket(this.node, this.emitter);
+    }
 
     async syncTransfer(umbreq)
     {
@@ -100,14 +101,24 @@ class UMBHandler
             let dataTimer = undefined;
 
             // make sure socket is connected
-            if (this.socket_status != "connected") {
-                this.node.log("connection closed. Reconnecting...");
-                this.client.connect(this.ip_port, this.ip_address);
-                /*this.ip_port, this.ip_address, () => {
-                    this.node.log("TX: " + umbreq.length);
-                    this.socket_status = "connected";
-                    this.node.status({fill:"green",shape:"ring",text:"connected"});
-                });*/
+            switch(this.client.socket_status) 
+            {
+                case "connected":
+                    // Socket already connected. Nothing to do here
+                    break;
+                case "error":
+                    // Socket error. Socket needs to be recreated
+                case "closed":
+                    // Socket is closed. Needs to be recreated
+                    this.node.log("Socket lost. Recreating...");
+                    this.client = new UMBSocket(this.node, this.emitter);
+                case "created":
+                    // Socket is created, but needs to be connected
+                    this.node.log("Socket closed. Connecting...");
+                    this.client.connect(this.ip_port, this.ip_address);
+                    break;
+                default:
+                    this.node.log("Error: undefined socket state!");
             }
             
             // transfer
@@ -115,21 +126,16 @@ class UMBHandler
             this.client.write(umbreq);
 
             // set TX Timeout
-            //this.client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2, () => {
-            dataTimer = setTimeout(() => {
+            this.client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2, () => {
                 this.node.log("Data timeout");
                 this.emitter.emit('finished', "Data timeout");
-            }, umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2);
+            });
 
             // Wait for result
             fnct_retval = await new Promise((resolve, reject) => {
                 this.emitter.on('finished', (retval) => {
-                    this.node.log("##");
-                    //this.client.setTimeout(0);
-                    if(dataTimer != undefined) {
-                        clearTimeout(dataTimer);
-                    }
-                    //this.client.destroy();
+                    this.node.log("Socket event received");
+                    this.client.setTimeout(0);
                     resolve(retval);
                 })
             });
@@ -144,12 +150,6 @@ class UMBHandler
         this.node.log("TX end");
         return fnct_retval;
     }
-
-    createSoecket()
-    {
-        let socket = new net.Socket();
-    }
-
 }
 
 module.exports.UMBHandler = UMBHandler;
