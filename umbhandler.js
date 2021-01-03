@@ -14,6 +14,8 @@ const { EventEmitter } = require('events');
 const { resolve } = require('path');
 const umb_consts = require('./umb_consts').umb_consts;
 
+let l_socket_id = 0;
+
 const UMBSocketStatus = {
     created: "created",
     closed: "closed",
@@ -24,7 +26,6 @@ const UMBSocketStatus = {
 
 class UMBSocket extends net.Socket
 {
-    
     constructor(node, emitter)
     {
         super();
@@ -33,7 +34,7 @@ class UMBSocket extends net.Socket
         this.node = node;
         this.socket_status = UMBSocketStatus.created;
         this.umbparser = new mod_umbparser.UMBParser(this.node);
-        this.id = Math.floor(Math.random() * 1000);
+        this.id = l_socket_id++;
 
         this.node.log("[" + this.id + "] Socket created");
 
@@ -108,22 +109,24 @@ class UMBHandler
 
     async syncTransfer(umbreq)
     {
+        let con_retval = undefined;
+        let data_retval = undefined;
         let fnct_retval = undefined;
+
         let dataTimer = undefined;
         let connTimer = undefined;
         let num_retries = 3;
 
         this.node.log("TX start (length:" + umbreq.length + ")");
 
-        while(num_retries > 0) {
+        while((num_retries > 0) && (fnct_retval == undefined)) {
 
             // make sure socket is connected
             switch(this.client.socket_status) 
             {
                 case UMBSocketStatus.connected:
                     // Socket already connected. Nothing to do here
-                    //this.emitter.emit('connected', 'Socket still connected')
-                    
+
                     // transfer
                     this.node.log("TX: " + umbreq.length);
                     this.client.write(umbreq);
@@ -139,7 +142,7 @@ class UMBHandler
                     }, umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2);
         
                     // Wait for result
-                    fnct_retval = await new Promise((resolve, reject) => {
+                    data_retval = await new Promise((resolve, reject) => {
                         this.emitter.on('finished', (retval) => {
                             this.node.log("Socket event received (" + retval + ")");
                             //this.client.setTimeout(0);
@@ -147,6 +150,14 @@ class UMBHandler
                             resolve(retval);
                         })
                     });
+
+                    if(data_retval == "Data timeout")
+                    {
+                        num_retries--;
+                    }
+                    else if((data_retval.umbframe != undefined) && (data_retval.parserState != undefined)) {
+                        fnct_retval = data_retval
+                    }
                     break;
                 case UMBSocketStatus.error:
                     // Socket error. Socket needs to be recreated
@@ -166,7 +177,7 @@ class UMBHandler
                     }, 2000);
 
                     // Wait for result
-                    fnct_retval = await new Promise((resolve, reject) => {
+                    con_retval = await new Promise((resolve, reject) => {
                         this.emitter.on('connected', (retval) => {
                             this.node.log("Socket connected received (" + retval + ")");
                             //this.client.setTimeout(0);
@@ -175,20 +186,18 @@ class UMBHandler
                         });
                         this.client.connect(this.ip_port, this.ip_address);
                     });
+
+                    if(con_retval == "Connection timeout") {
+                        fnct_retval = con_retval;
+                    }
                     break;
                 default:
                     this.node.log("Error: undefined socket state!");
+                    fnct_retval = "Invalid socket state";
                     break;
             }
-
-            num_retries--;
-            if( (fnct_retval == "Data timeout") 
-                || (fnct_retval == "Connection timeout")
-                || ((fnct_retval.parserState != undefined) && (fnct_retval.umbframe != undefined)) ) {
-                num_retries = 0;
-            }
         }
-
+        
         this.node.log("TX end (retval: parsedFrame.parserState=" + fnct_retval.parserState + " / parsedFrame.umbframe=" + fnct_retval.umbframe + ")");
         return fnct_retval;
     }
