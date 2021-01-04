@@ -146,7 +146,6 @@ module.exports = function(RED) {
             umb_channels.error = error;
             res.json(umb_channels);
         });
-
     });
     
 }

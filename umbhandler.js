@@ -15,6 +15,8 @@ const { resolve } = require('path');
 const umb_consts = require('./umb_consts').umb_consts;
 
 let l_socket_id = 0;
+let l_client = undefined;
+let l_emitter = undefined; 
 
 const UMBSocketStatus = {
     created: "created",
@@ -30,7 +32,7 @@ class UMBSocket extends net.Socket
     {
         super();
 
-        this.emitter = emitter;
+        l_emitter = emitter;
         this.node = node;
         this.socket_status = UMBSocketStatus.created;
         this.umbparser = new mod_umbparser.UMBParser(this.node);
@@ -40,22 +42,22 @@ class UMBSocket extends net.Socket
 
         this.setNoDelay(true);
         this.on('error', (ex) => {
-            this.socket_status = UMBSocketStatus.error;
             this.node.log("[" + this.id + "] Socket error (" + ex + ")");
             this.node.log(ex);
-            this.emitter.emit('finished', 'Socket error');
+            this.socket_status = UMBSocketStatus.error;
+            l_emitter.emit('finished', 'Socket error');
         });
         this.on('close', (hadError) => {
-            this.socket_status = UMBSocketStatus.closed;
             this.node.log("[" + this.id + "] Socket closed (Error: " + hadError + ")");
+            this.socket_status = UMBSocketStatus.closed;
+            l_emitter.emit('finished', 'Socket closed');
             this.node.status({fill:"red",shape:"ring",text:"disconnected"});
-            this.emitter.emit('finished', 'Socket closed');
         });
         this.on('connect', () => {
-            this.socket_status = UMBSocketStatus.connected;
             this.node.log("[" + this.id + "] Socket connected");
+            this.socket_status = UMBSocketStatus.connected;
+            l_emitter.emit('connected', 'Socket connected');
             this.node.status({fill:"green",shape:"ring",text:"connected"});
-            this.emitter.emit('connected', 'Socket connected');
         })
         this.on('data', (data) => {
             this.node.log("[" + this.id + "] Socket RX: " + data.length + "bytes");
@@ -70,7 +72,7 @@ class UMBSocket extends net.Socket
                 this.node.log("Frametype: " + parsedFrame.umbframe.type);
                 this.node.log("Framestatus: " + parsedFrame.umbframe.status);
                 this.node.log("Framecmd: " + parsedFrame.umbframe.cmd);
-                this.emitter.emit('finished', parsedFrame);
+                l_emitter.emit('finished', parsedFrame);
             }
             else if(parsedFrame.parserState == "processing")
             {
@@ -92,7 +94,7 @@ class UMBHandler
      * @param {int} ip_address 
      */
     constructor(node, address, ip_port, ip_address)
-    {
+    {   
         var self = this;
 
         this.node = node;
@@ -100,96 +102,99 @@ class UMBHandler
         this.ip_port = ip_port;
         this.ip_address = ip_address;
 
-        this.emitter = new EventEmitter();
-        
         this.cb_result = undefined;
 
-        this.client = new UMBSocket(this.node, this.emitter);
+        if(l_emitter == undefined) {
+            l_emitter= new EventEmitter();
+        }
+
+        if(l_client == undefined) {
+            l_client = new UMBSocket(this.node, l_emitter);
+        }
     }
 
     async syncTransfer(umbreq)
     {
-        let con_retval = undefined;
-        let data_retval = undefined;
         let fnct_retval = undefined;
 
-        let dataTimer = undefined;
-        let connTimer = undefined;
-        let num_retries = 3;
+        let num_retries = 0;
 
         this.node.log("TX start (length:" + umbreq.length + ")");
 
-        while((num_retries > 0) && (fnct_retval == undefined)) {
+        while(fnct_retval == undefined) {
 
             // make sure socket is connected
-            switch(this.client.socket_status) 
+            switch(l_client.socket_status) 
             {
                 case UMBSocketStatus.connected:
                     // Socket already connected. Nothing to do here
 
                     // transfer
-                    this.node.log("TX: " + umbreq.length);
-                    this.client.write(umbreq);
-        
-                    // set TX Timeout
-                    /*this.client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2, () => {
-                        this.node.log("Data timeout");
-                        this.emitter.emit('finished', "Data timeout");
-                    });*/
-                    dataTimer = setTimeout(() => {
-                        this.node.log("Data timeout");
-                        this.emitter.emit('finished', "Data timeout");
-                    }, umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2);
-        
-                    // Wait for result
-                    data_retval = await new Promise((resolve, reject) => {
-                        this.emitter.on('finished', (retval) => {
-                            this.node.log("Socket event received (" + retval + ")");
-                            //this.client.setTimeout(0);
-                            clearTimeout(dataTimer);
-                            resolve(retval);
-                        })
-                    });
+                    await new Promise( (resolve, reject) => {
+                        this.node.log("TX: " + umbreq.length);
 
-                    if(data_retval == "Data timeout")
-                    {
-                        num_retries--;
-                    }
-                    else if((data_retval.umbframe != undefined) && (data_retval.parserState != undefined)) {
-                        fnct_retval = data_retval
-                    }
+                        l_client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2, () => {
+                            this.node.log("Data timeout");
+                            l_emitter.emit('finished', "Data timeout");
+                        });
+
+                        l_emitter.on('finished', (result) => {
+                            this.node.log("Socket event received (" + result + ")");
+                            l_client.setTimeout(0);
+                            resolve(result);
+                        });
+                        
+                        l_client.write(umbreq);
+                    }).then( (result) => {
+                        l_emitter.removeAllListeners("finished");
+                        if(result == "Data timeout")
+                        {
+                            this.node.log("Data timeout #" + num_retries)
+                            num_retries++;
+                            if(num_retries > 3) {
+                                fnct_retval = "Data Timeout";
+                            }
+                        }
+                        else if((result.umbframe != undefined) && (result.parserState != undefined)) {
+                            fnct_retval = result;
+                        }
+                    });
+                    
                     break;
                 case UMBSocketStatus.error:
-                    // Socket error. Socket needs to be recreated
-                    // >> fallthrough
+                    // Socket error
+                    fnct_retval = "Socket Error";
+                    break;
                 case UMBSocketStatus.closed:
                     // Socket is closed. Needs to be recreated
-                    this.node.log("Socket lost. Recreating...");
-                    this.client = new UMBSocket(this.node, this.emitter);
+                    this.node.log("Socket closed");
+                    //l_client = new UMBSocket(this.node, l_emitter);
                     // >> fallthrough
                 case UMBSocketStatus.created:
                     // Socket is created, but needs to be connected
                     this.node.log("Socket created. Connecting...");
 
-                    connTimer = setTimeout(() => {
-                        this.node.log("Connection timeout");
-                        this.emitter.emit('connected', "Connection timeout");
-                    }, 2000);
-
-                    // Wait for result
-                    con_retval = await new Promise((resolve, reject) => {
-                        this.emitter.on('connected', (retval) => {
-                            this.node.log("Socket connected received (" + retval + ")");
-                            //this.client.setTimeout(0);
-                            clearTimeout(connTimer);
-                            resolve(retval);
+                    // wait for connection
+                    await new Promise((resolve, reject) => {
+                        l_client.setTimeout(5000, () => {
+                            this.node.log("Connection timeout");
+                            l_emitter.emit('connected', "Connection timeout");
                         });
-                        this.client.connect(this.ip_port, this.ip_address);
-                    });
+                        
+                        l_emitter.on('connected', (result) => {
+                            this.node.log("Socket connected received (" + result + ")");
+                            l_client.setTimeout(0);
+                            resolve(result);
+                        });
 
-                    if(con_retval == "Connection timeout") {
-                        fnct_retval = con_retval;
-                    }
+                        l_client.connect(this.ip_port, this.ip_address);
+                    }).then((result) => {
+                        l_emitter.removeAllListeners("connected");
+                        if(result == "Connection timeout") {
+                            fnct_retval = result;
+                        }
+                    });
+                    
                     break;
                 default:
                     this.node.log("Error: undefined socket state!");
@@ -197,8 +202,9 @@ class UMBHandler
                     break;
             }
         }
-        
-        this.node.log("TX end (retval: parsedFrame.parserState=" + fnct_retval.parserState + " / parsedFrame.umbframe=" + fnct_retval.umbframe + ")");
+
+        this.node.log("TX end (" + fnct_retval + ")");
+
         return fnct_retval;
     }
 }
