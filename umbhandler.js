@@ -116,7 +116,6 @@ class UMBHandler
     async syncTransfer(umbreq)
     {
         let fnct_retval = undefined;
-
         let num_retries = 0;
 
         this.node.log("TX start (length:" + umbreq.length + ")");
@@ -132,30 +131,30 @@ class UMBHandler
                     // transfer
                     await new Promise( (resolve, reject) => {
                         this.node.log("TX: " + umbreq.length);
-
                         l_client.setTimeout(umb_consts.UMB_TIMEOUT.TIMEOUT_LONG*2, () => {
                             this.node.log("Data timeout");
                             l_emitter.emit('finished', "Data timeout");
                         });
-
                         l_emitter.on('finished', (result) => {
                             this.node.log("Socket event received (" + result + ")");
                             l_client.setTimeout(0);
                             resolve(result);
                         });
-                        
                         l_client.write(umbreq);
                     }).then( (result) => {
                         l_emitter.removeAllListeners("finished");
-                        if(result == "Data timeout")
+                        if (result == "Data timeout")
                         {
                             this.node.log("Data timeout #" + num_retries)
                             num_retries++;
-                            if(num_retries > 3) {
+                            if (num_retries > 3) {
                                 fnct_retval = "Data Timeout";
                             }
                         }
-                        else if((result.umbframe != undefined) && (result.parserState != undefined)) {
+                        else if ((result.umbframe != undefined) && (result.parserState != undefined)) {
+                            fnct_retval = result;
+                        }
+                        else {
                             fnct_retval = result;
                         }
                     });
@@ -176,17 +175,15 @@ class UMBHandler
 
                     // wait for connection
                     await new Promise((resolve, reject) => {
-                        l_client.setTimeout(5000, () => {
+                        let conTimeout = setTimeout(() => {
                             this.node.log("Connection timeout");
                             l_emitter.emit('connected', "Connection timeout");
-                        });
-                        
+                        }, 5000);
                         l_emitter.on('connected', (result) => {
                             this.node.log("Socket connected received (" + result + ")");
-                            l_client.setTimeout(0);
+                            clearTimeout(conTimeout);
                             resolve(result);
                         });
-
                         l_client.connect(this.ip_port, this.ip_address);
                     }).then((result) => {
                         l_emitter.removeAllListeners("connected");
