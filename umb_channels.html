@@ -28,7 +28,7 @@
                     var chname = $('<input/>',{id:"node-config-input-chname-"+i, type:"text", style:"width:auto; vertical-align:middle"}).appendTo(row);
                     ch.val(channel.ch);
                     chname.val(channel.chname);
-                    chena.prop("checked", false);
+                    chena.prop("checked", channel.enabled);
                 },
                 removeItem: function(opt) {
                 },

@@ -124,7 +124,7 @@ module.exports = function(RED) {
                             {
                                 node.log("CurChannel: " + curChannel);
                                 curChDetails = new Object();
-                                curChDetails.enabled = true;
+                                curChDetails.enabled = false;
                                 curChDetails.ch = curChannel;
                                 curChDetails.chname = response.umbframe.framedata.parsed.name;
                                 curChDetails.chunit = response.umbframe.framedata.parsed.unit;
