@@ -22,7 +22,7 @@ var ip_port = 0;
 var umb_channels = {
     name: {value: "WS10"},
     channels: {value: [
-        {enabled:true, ch:"100", chname:"Temperature"},
+        {enabled:true, ch:"100", chname:"Temperature", chunit:"°C"},
     ]},
     status: ""
 };
@@ -147,5 +147,4 @@ module.exports = function(RED) {
             res.json(umb_channels);
         });
     });
-    
 }

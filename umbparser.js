@@ -536,7 +536,7 @@ class UMBParser
             this.node.log(curMeasName);
             if (curMeasName in measValues)
             {
-                this.node.error("muitple measurements of " + curMeasName + "! Please make sure to query only one");
+                this.node.error("multiple measurements of " + curMeasName + "! Please make sure to query only one");
             }
             measValues[curMeasName] = element.ch_value.toPrecision(3);
         });

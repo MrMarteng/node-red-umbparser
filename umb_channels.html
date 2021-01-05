@@ -5,7 +5,7 @@
         defaults: {
             name: {value: ""},
             channels: {value: [
-                {enabled:false, ch:"", chname:""}]},
+                {enabled:false, ch:"", chname:"", chunit:""}]},
         },
         icon: "file.png",
         label: function() {
@@ -26,9 +26,12 @@
                     var ch = $('<input/>',{id:"node-config-input-ch-"+i,type:"text", style:"width:60px; vertical-align:middle"}).appendTo(row);
                     $('<label/>',{for:"node-config-input-chname-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Name").appendTo(row);
                     var chname = $('<input/>',{id:"node-config-input-chname-"+i, type:"text", style:"width:auto; vertical-align:middle"}).appendTo(row);
+                    $('<label/>',{for:"node-config-input-chunit-"+i, style:"margin:3px; margin-left:7px; width:auto; vertical-align:middle"}).text("Unit").appendTo(row);
+                    var chunit = $('<input/>',{id:"node-config-input-chunit-"+i, type:"text", style:"width:50px; vertical-align:middle"}).appendTo(row);
                     ch.val(channel.ch);
                     chname.val(channel.chname);
                     chena.prop("checked", channel.enabled);
+                    chunit.val(channel.chunit);
                 },
                 removeItem: function(opt) {
                 },
@@ -85,11 +88,13 @@
                 var chena = deviceElement.find("#node-config-input-ch-ena-"+i).prop("checked");
                 var ch = deviceElement.find("#node-config-input-ch-"+i).val();
                 var chname = deviceElement.find("#node-config-input-chname-"+i).val();
+                var chunit = deviceElement.find("#node-config-input-chunit-"+i).val();
                 console.log(ch, chname);
                 var d = {};
                 d['enabled']= chena;
                 d['ch']=ch;
                 d['chname']=chname;
+                d['chunit']=chunit;
                 console.log(d);
                 chArray.push(d);
             });
