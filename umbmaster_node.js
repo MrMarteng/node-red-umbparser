@@ -86,10 +86,10 @@ module.exports = function(RED) {
         this.cfg_channels = RED.nodes.getNode(config.channels);
         if(this.cfg_channels)
         {
-            this.channels = [];
+            this.query_channels = [];
             this.cfg_channels.channels.forEach(element => {
                 if(element.enabled)
-                    this.channels.push(element.ch);
+                    this.query_channels.push(element.ch);
             });
         }
         
@@ -97,7 +97,7 @@ module.exports = function(RED) {
         let umbhandler = new mod_umbhandler.UMBHandler(this, dev_address, ip_port, ip_address);
 
         node.on('input', function(msg) {
-            let umbreq = umbgen.createMultiChReq(dev_address, this.channels);
+            let umbreq = umbgen.createMultiChReq(dev_address, this.query_channels);
             
             umbhandler.syncTransfer(umbreq).then((response) => {
                 let retmsg = new Object;
