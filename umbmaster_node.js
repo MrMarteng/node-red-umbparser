@@ -78,7 +78,7 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
 
         // BUG: NRU-15 - Communication only working with to-address 0
-        //dev_address = parseInt(config.dev_address, 16);
+        dev_address = parseInt(config.dev_address, 16);
         ip_address = config.ip_address;
         ip_port = config.ip_port;
         node = this;
