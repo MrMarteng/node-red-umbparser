@@ -4,6 +4,7 @@
         color: '#a6bbcf',
         defaults: {
             name: {value: ""},
+            unitsystem: {value:"metric", required:true},
             channels: {value: [
                 {enabled:false, ch:"", chname:"", chunit:""}]},
         },
@@ -51,7 +52,7 @@
                 $("#node-config-lookup-channels").addClass('disabled');
                 $("#node-config-input-channellist").editableList("empty");
                 $("#channellist-loader").show();
-                $.getJSON('umbchannels', function(chlist) {
+                $.getJSON('umbchannels', '&unitsystem=' + $("#node-config-input-unitsystem").val(), function(chlist) {
                     $("#node-config-lookup-channels").removeClass('disabled');
                     $("#channellist-loader").hide();
                     if(chlist.error == undefined) {
@@ -130,13 +131,21 @@
 <script type="text/html" data-template-name="umbchannels" >
     <body>
     <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
+        <input type="text" id="node-config-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-unitsystem"><i class="icon-tag"></i> Units</label>
+        <select type="text" id="node-config-input-unitsystem">
+            <option value="metric">metric</option>
+            <option value="imperial">imperial</option>
+            <option value="all">all</option>
+        </select>
+    </div>
+    <div class="form-row">
         <a id="node-config-lookup-channels" class="red-ui-button">
             <i class="fa fa-download"></i>
         </a>
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
-        <input type="text" id="node-config-input-name">
     </div>
     <div class="form-row" style="position: relative;">
         <label for="node-config-input-channellist"><i class="icon-tag"></i> Channels</label>

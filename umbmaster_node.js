@@ -27,6 +27,52 @@ var umb_channels = {
     status: ""
 };
 
+const UNIT_SYSTEMS = new Map(
+[
+    ["°C", "metric"],
+    ["°F", "imperial"],
+    ["m/s", "metric"],
+    ["km/h", "metric"],
+    ["mph", "imperial"],
+    ["kts", "imperial"],
+    ["l/m²", "metric"],
+    ["mm", "metric"],
+    ["in", "imperial"],
+    ["mil", "imperial"],
+    ["l/m²/h", "metric"],
+    ["mm/h", "metric"],
+    ["in/h", "imperial"],
+    ["in/m", "imperial"],
+    ["mil/h", "imperial"],
+]
+);
+
+/**
+ * Checks if a given unit @cur_unit is withing a given unit system (@cfg_unitsystem). 
+ * 
+ * @param {string} cur_unit Current unit to be checked (e.g. '°C')
+ * @param {string} cfg_unitsystem Current selected unit system (possible values: 'all', 'imperial', 'metric')
+ */
+function checkUnit(cur_unit, cfg_unitsystem) {
+    let cur_unitsystem = UNIT_SYSTEMS.get(cur_unit);
+    retval = true;
+
+    if(cfg_unitsystem == "all") {
+        retval = true;
+    }
+    else {
+        if( (cfg_unitsystem == cur_unitsystem) 
+            || (cur_unitsystem == undefined) ) {
+            retval = true;
+        }
+        else {
+            retval = false;
+        }
+    }
+             
+    return retval;
+}
+
 module.exports = function(RED) {
     function UMBMasterNode(config) {
         RED.nodes.createNode(this, config);
@@ -66,6 +112,8 @@ module.exports = function(RED) {
     RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {
         let umbgen = new mod_umbparser.UMBGenerator(node);
         let umbhandler = new mod_umbhandler.UMBHandler(node, dev_address, ip_port, ip_address);
+
+        let cfg_unitsystem = new URLSearchParams(req.url).get("unitsystem");
 
         /* 1. query number of blocks and channels */
         new Promise((resolve, reject) => {
@@ -128,7 +176,12 @@ module.exports = function(RED) {
                                 curChDetails.ch = curChannel;
                                 curChDetails.chname = response.umbframe.framedata.parsed.name;
                                 curChDetails.chunit = response.umbframe.framedata.parsed.unit;
-                                channelCfg.push(curChDetails);
+                                if(checkUnit(curChDetails.chunit, cfg_unitsystem)) {
+                                    channelCfg.push(curChDetails);
+                                }
+                                else {
+                                    node.log("skipped");
+                                }
                             }
                         });
                     }, undefined);
