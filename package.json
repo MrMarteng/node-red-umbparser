@@ -1,13 +1,14 @@
 {
   "name": "node-red-umbparser",
   "version": "1.0.0",
-  "description": "",
+  "description": "UMB master node for meteorological weather stations from Lufft/Ott",
   "main": "umbmaster_node.js",
   "scripts": {
     "test": "mocha"
   },
   "author": "",
   "license": "ISC",
+  "keywords": [ "node-red", "umb", "lufft", "Ott" ],
   "node-red": {
     "nodes": {
       "umbparser": "umbmaster_node.js",
