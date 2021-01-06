@@ -245,6 +245,8 @@ class UMBParser
         this.parserState = PAR_STATE.PARSER_PROCESSING;
         this.payload = new Uint8Array();
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
+
+        this.channelmap = new Map(this.node.cfg_channels.channels.map(i => [parseInt(i.ch), i.chname]));
     }
 
     /**
@@ -532,7 +534,7 @@ class UMBParser
 
         let measValues = new Object();
         chData.forEach(element => {
-            let curMeasName = DefaultChannels.get(element.ch_number);
+            let curMeasName = this.channelmap.get(element.ch_number);
             this.node.log(curMeasName);
             if (curMeasName in measValues)
             {
