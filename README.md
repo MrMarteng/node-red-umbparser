@@ -4,11 +4,7 @@ This node can be used to query measurement data from Sensors that support the UM
 
 The purpose of this node is to periodically poll and parse measurement data from a device. In UMB the measurement values of a sensor/device is organized in channels. The channels to be queried can be configured in the node settings. Furthermore, as every sensors reports the featured channels generically, the node is able to query the channels, that are offered by the sensor dynamically.
 
-## Features
-
-It allows
-
-# UMB protocol details
+## UMB protocol details
 
 UMB stands for Universal Monitoring Bus. It basically is a RS485 based hardware 
 interface and protocoll, that is used by most meterological sensors from the 
@@ -19,7 +15,7 @@ This node implements the **binary UMB** protocol.
 
 For more details about the according sensors and the UMB protocol please visit: https://www.lufft.com/download/manual-lufft-umb-protocol-en/ or https://www.otthydromet.com
 
-## What you need to know ##
+### What you need to know ###
 
 Important to know about UMB, is that it is a "Master-Slave" or "Controller-Device" protocol. This means that the bus topoligy featues the connection of different devices but **there can only be one controller**. The devices are not allowed to send data on the bus itself. Moreover the Controller sends a request to one device or a group of devices (broadcast). The according device then has a time slot to respond to this **request** with an according **response**.
 
@@ -163,15 +159,32 @@ The check box at the left of each measurement activates or deactivates the chann
 
 A measurement channel can be deleted from the configuration using the cross at the right side of the measurement entry.
 
+#### Add channel manually
+
+Below the channel list is a **+** button that allows you to add channels as you need. 
+
+#### Query device channels
+
+The download button right beside the Channels label can be used to query a new channel list from the device. As there very often exist multiple measurement channels with different units, e.g. Temperature in °C and °F, you may select the according unit system used in your application.
+
+> **_NOTE:_** Please note that all existing channels will be deleted when retrieving a new channel list from the device.
+
 ## Query measurement channels from the device
 
-> **_NODE:_** Please note that the device must be enabled ti 
+> **_NOTE:_** Please note that the device must be powered and to query the supported channels.
+
+The download
 
 # Known issues
 
 ## FAQ
 
-**Q:** 
+**Q:** I get a "muitple measurements" warning
+**A:** Please verify that you don't query multiple channels with the same name (e.g. different units). See [frame details](#frame details) description
+
+## Bugs
+
+No bugs are known yet.
 
 # Planned features
 
@@ -181,5 +194,5 @@ Currently the node only support IP socket queries via UDP. Depending of the devi
 
 ### Implement status request feature to ping a device
 
-Every UMB device features a status command, that can be used to ping a device. This is helpful to verify that the basic configuration and setup is working properly
+Every UMB device features a status command, that can be used to ping a device. This is helpful to verify that the basic configuration and setup is working properly.
 
