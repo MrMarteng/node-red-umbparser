@@ -74,7 +74,7 @@ function checkUnit(cur_unit, cfg_unitsystem) {
 }
 
 module.exports = function(RED) {
-    function UMBMasterNode(config) {
+    function UMBControllerNode(config) {
         RED.nodes.createNode(this, config);
 
         // BUG: NRU-15 - Communication only working with to-address 0
@@ -106,7 +106,7 @@ module.exports = function(RED) {
             });
         });
     }
-    RED.nodes.registerType("umbmaster", UMBMasterNode);
+    RED.nodes.registerType("umbcontroller", UMBControllerNode);
 
     // Register internal URL to query channel list (used by channel_list config node)
     RED.httpAdmin.get("/umbchannels", RED.auth.needsPermission('umbchannels.read'), function(req,res) {

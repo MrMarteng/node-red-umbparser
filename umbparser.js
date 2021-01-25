@@ -771,7 +771,7 @@ class UMBGenerator
      */
     createMultiChReq(to_addr, channellist) 
     {
-        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, umb_consts.UMBFRAME_CONTROLLER_ADDR);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
         let payloadLength = 1+channellist.length*2;
 
@@ -806,7 +806,7 @@ class UMBGenerator
      */
     createDevInfoReq(to_addr, subcmd, option=undefined) 
     {
-        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_CONTROLLER_ADDR);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
         let payloadLength = 0;
 
