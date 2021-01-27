@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020
+ * Copyright (c) 2020 OTT Hydromet Fellbach GmbH
  *
  * Node-Red UMB parser
  *
