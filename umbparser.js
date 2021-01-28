@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020
+ * Copyright (c) 2020 OTT Hydromet Fellbach GmbH
  *
  * UMB parser objects
  *
@@ -245,6 +245,8 @@ class UMBParser
         this.parserState = PAR_STATE.PARSER_PROCESSING;
         this.payload = new Uint8Array();
         this.CRC = new CRC("CRC16", 16, 0x1021, 0xFFFF, 0x0000, true, true);
+
+        this.channelmap = new Map(this.node.cfg_channels.channels.map(i => [parseInt(i.ch), i.chname]));
     }
 
     /**
@@ -532,11 +534,11 @@ class UMBParser
 
         let measValues = new Object();
         chData.forEach(element => {
-            let curMeasName = DefaultChannels.get(element.ch_number);
+            let curMeasName = this.channelmap.get(element.ch_number);
             this.node.log(curMeasName);
             if (curMeasName in measValues)
             {
-                this.node.error("muitple measurements of " + curMeasName + "! Please make sure to query only one");
+                this.node.error("Multiple measurements of " + curMeasName + " selected! Please make sure to query only one.");
             }
             measValues[curMeasName] = element.ch_value.toPrecision(3);
         });
@@ -631,9 +633,9 @@ class UMBParser
         let chDetailsDV1 = new DataView(this.payload.buffer, payloadOffset, 2+20+15+1+1);
         chDetailsRaw.channel = chDetailsDV1.getUint16(byteIdx, true); 
         byteIdx += 2;
-        chDetailsRaw.name = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+20));
+        chDetailsRaw.name = new TextDecoder("ISO-8859-1").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+20)).trimEnd();
         byteIdx += 20;
-        chDetailsRaw.unit = new TextDecoder("utf-8").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+15));
+        chDetailsRaw.unit = new TextDecoder("ISO-8859-1").decode(this.payload.slice(byteIdx+payloadOffset, byteIdx+payloadOffset+15)).trimEnd();
         byteIdx += 15;
         chDetailsRaw.ch_type = chDetailsDV1.getUint8(byteIdx, true);
         byteIdx++;
@@ -769,7 +771,7 @@ class UMBGenerator
      */
     createMultiChReq(to_addr, channellist) 
     {
-        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        this.createReq(umb_consts.UMB_CMD.GETMULTICHANNEL, 0x10, to_addr, umb_consts.UMBFRAME_CONTROLLER_ADDR);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
         let payloadLength = 1+channellist.length*2;
 
@@ -804,7 +806,7 @@ class UMBGenerator
      */
     createDevInfoReq(to_addr, subcmd, option=undefined) 
     {
-        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_MASTER_ADDR);
+        this.createReq(umb_consts.UMB_CMD.GETDEVINFO, 0x10, to_addr, umb_consts.UMBFRAME_CONTROLLER_ADDR);
         let payloadIndex = this.getPayloadDataIndex(FRAME_TYPE.REQUEST);
         let payloadLength = 0;
 
